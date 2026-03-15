@@ -1,0 +1,365 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER MANAGEMENT ====================
+
+enum UserRole {
+  ADMIN
+  SATPAM
+  WARGA
+  PENGELOLA
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  username     String      @unique
+  password     String
+  email        String      @unique
+  fullName     String
+  phone        String?
+  role         UserRole    @default(WARGA)
+  status       UserStatus  @default(ACTIVE)
+  lastLogin    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  resident     Resident?
+  activityLogs ActivityLog[]
+  accessRecordsAccess AccessRecord[]    @relation("AccessOperator")
+  violations Violation[]       @relation("ViolationRecorder")
+  blacklists  Blacklist[]       @relation("BlacklistCreator")
+
+  @@map("users")
+}
+
+// ==================== PROPERTY MANAGEMENT ====================
+
+enum HouseStatus {
+  OCCUPIED
+  VACANT
+}
+
+model House {
+  id           String       @id @default(cuid())
+  houseNumber  String       @unique
+  address      String?
+  block        String?
+  status       HouseStatus  @default(OCCUPIED)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  residents    Resident[]
+  vehicles     Vehicle[]
+  guestAccesses GuestAccess[]
+
+  @@map("houses")
+}
+
+enum ResidentRelation {
+  OWNER
+  TENANT
+  FAMILY
+}
+
+model Resident {
+  id           String           @id @default(cuid())
+  userId       String           @unique
+  houseId      String
+  relationship ResidentRelation @default(OWNER)
+  registeredAt DateTime         @default(now())
+
+  // Relations
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  house        House            @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@map("residents")
+}
+
+// ==================== VEHICLE MANAGEMENT ====================
+
+enum VehicleType {
+  MOTOR
+  SEDAN
+  MINIBUS
+  PICKUP
+  TRUK
+}
+
+enum VehicleCategory {
+  WARGA
+  TAMU
+  SERVICE
+  DELIVERY
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+model Vehicle {
+  id           String          @id @default(cuid())
+  platNumber   String          @unique
+  vehicleType  VehicleType     @default(MOTOR)
+  brand        String
+  color        String
+  category     VehicleCategory @default(WARGA)
+  status       VehicleStatus   @default(ACTIVE)
+  houseId      String?
+  registeredAt DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relations
+  house        House?          @relation(fields: [houseId], references: [id], onDelete: SetNull)
+  accessRecords AccessRecord[]
+  violations   Violation[]
+  blacklist    Blacklist?
+  parkingSlots ParkingSlot[]
+
+  @@map("vehicles")
+}
+
+// ==================== PARKING MANAGEMENT ====================
+
+enum ParkingAreaType {
+  MAIN
+  GUEST
+  OVERFLOW
+}
+
+enum ParkingAreaStatus {
+  AVAILABLE
+  FULL
+  MAINTENANCE
+}
+
+model ParkingArea {
+  id               String             @id @default(cuid())
+  name             String
+  type             ParkingAreaType    @default(MAIN)
+  capacity         Int
+  currentOccupancy Int               @default(0)
+  status           ParkingAreaStatus  @default(AVAILABLE)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  // Relations
+  slots            ParkingSlot[]
+  accessRecords    AccessRecord[]
+
+  @@map("parking_areas")
+}
+
+enum ParkingSlotStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
+
+model ParkingSlot {
+  id          String            @id @default(cuid())
+  areaId      String
+  slotNumber  String
+  status      ParkingSlotStatus @default(AVAILABLE)
+  vehicleId   String?
+  occupiedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  area        ParkingArea       @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  vehicle     Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@unique([areaId, slotNumber])
+  @@map("parking_slots")
+}
+
+// ==================== ACCESS MANAGEMENT ====================
+
+enum AccessStatus {
+  ACTIVE
+  COMPLETED
+}
+
+model AccessRecord {
+  id           String       @id @default(cuid())
+  vehicleId    String
+  entryTime    DateTime     @default(now())
+  exitTime     DateTime?
+  slotNumber   String?
+  areaId       String?
+  operatorId   String
+  status       AccessStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+
+  // Relations
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  area         ParkingArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  operator     User         @relation("AccessOperator", fields: [operatorId], references: [id])
+  guestAccess  GuestAccess?
+
+  @@map("access_records")
+}
+
+model GuestAccess {
+  id              String   @id @default(cuid())
+  accessRecordId  String   @unique
+  hostHouseId     String
+  purpose         String
+  maxDurationHours Int     @default(8)
+  expiredAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  accessRecord    AccessRecord @relation(fields: [accessRecordId], references: [id], onDelete: Cascade)
+  hostHouse       House        @relation(fields: [hostHouseId], references: [id], onDelete: Cascade)
+
+  @@map("guest_accesses")
+}
+
+// ==================== VIOLATION MANAGEMENT ====================
+
+enum ViolationTypeCode {
+  PARKIR_AREA_SALAH
+  PARKIR_JALUR_DARURAT
+  OVER_TIME
+  MERUSAK_FASILITAS
+  LAIN_LAIN
+}
+
+model ViolationType {
+  id          String             @id @default(cuid())
+  code        ViolationTypeCode  @unique
+  name        String
+  description String?
+  baseFine    Float
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+
+  violations  Violation[]
+
+  @@map("violation_types")
+}
+
+enum ViolationStatus {
+  PENDING
+  PAID
+  WAIVED
+}
+
+model Violation {
+  id             String           @id @default(cuid())
+  vehicleId      String
+  violationTypeId String
+  description    String?
+  baseFine       Float
+  totalFine      Float
+  multiplier     Int              @default(1)
+  status         ViolationStatus  @default(PENDING)
+  recordedBy     String
+  violationDate  DateTime         @default(now())
+  paidAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  // Relations
+  vehicle        Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  violationType  ViolationType    @relation(fields: [violationTypeId], references: [id])
+  recorder       User             @relation("ViolationRecorder", fields: [recordedBy], references: [id])
+  payment        Payment?
+
+  @@map("violations")
+}
+
+// ==================== PAYMENT MANAGEMENT ====================
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  violationId    String        @unique
+  amount         Float
+  paymentMethod  String
+  status         PaymentStatus @default(PENDING)
+  transactionId  String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  // Relations
+  violation      Violation     @relation(fields: [violationId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ==================== BLACKLIST MANAGEMENT ====================
+
+enum BlacklistType {
+  PERMANENT
+  TEMPORARY
+  AUTO_DENDA
+  AUTO_VIOLATION
+}
+
+enum BlacklistStatus {
+  ACTIVE
+  REMOVED
+  EXPIRED
+}
+
+model Blacklist {
+  id            String           @id @default(cuid())
+  vehicleId     String           @unique
+  reason        String
+  blacklistType BlacklistType    @default(TEMPORARY)
+  startDate     DateTime         @default(now())
+  endDate       DateTime?
+  addedBy       String
+  status        BlacklistStatus  @default(ACTIVE)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  vehicle       Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  creator       User             @relation("BlacklistCreator", fields: [addedBy], references: [id])
+
+  @@map("blacklists")
+}
+
+// ==================== ACTIVITY LOGGING ====================
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  module      String
+  description String
+  ipAddress   String?
+  details     String?  // JSON string
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("activity_logs")
+}
