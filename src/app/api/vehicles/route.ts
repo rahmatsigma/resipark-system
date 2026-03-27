@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     if (user.role === 'WARGA') {
       where.userId = user.id;
     }
+    // ADMIN sees all vehicles
 
     if (search) {
       where.OR = [
