@@ -40,6 +40,7 @@ model User {
 
   // Relations
   resident     Resident?
+  vehicles     Vehicle[]       // Vehicles owned by this user
   activityLogs ActivityLog[]
   accessRecordsAccess AccessRecord[]    @relation("AccessOperator")
   violations Violation[]       @relation("ViolationRecorder")
@@ -124,11 +125,13 @@ model Vehicle {
   category     VehicleCategory @default(WARGA)
   status       VehicleStatus   @default(ACTIVE)
   houseId      String?
+  userId       String?         // Owner of the vehicle
   registeredAt DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
   // Relations
   house        House?          @relation(fields: [houseId], references: [id], onDelete: SetNull)
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   accessRecords AccessRecord[]
   violations   Violation[]
   blacklist    Blacklist?
@@ -151,12 +154,21 @@ enum ParkingAreaStatus {
   MAINTENANCE
 }
 
+enum SlotType {
+  MOTOR
+  MOBIL
+}
+
 model ParkingArea {
   id               String             @id @default(cuid())
   name             String
   type             ParkingAreaType    @default(MAIN)
   capacity         Int
+  motorSlots       Int                @default(0)
+  mobilSlots       Int                @default(0)
   currentOccupancy Int               @default(0)
+  currentMotor     Int               @default(0)
+  currentMobil     Int               @default(0)
   status           ParkingAreaStatus  @default(AVAILABLE)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -178,6 +190,7 @@ model ParkingSlot {
   id          String            @id @default(cuid())
   areaId      String
   slotNumber  String
+  slotType    SlotType          @default(MOTOR)
   status      ParkingSlotStatus @default(AVAILABLE)
   vehicleId   String?
   occupiedAt  DateTime?
