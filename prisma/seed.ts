@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, UserStatus, HouseStatus, VehicleType, VehicleCategory, VehicleStatus, ParkingAreaType, ParkingAreaStatus, ViolationTypeCode } from '@prisma/client';
+import { PrismaClient, UserRole, UserStatus, HouseStatus, VehicleType, VehicleCategory, VehicleStatus, ParkingAreaType, ParkingAreaStatus, ViolationTypeCode, SlotType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -181,41 +181,65 @@ async function main() {
   console.log('✅ Residents created');
 
   // ==================== CREATE PARKING AREAS ====================
+  // Main Area: 50 motor + 50 mobil = 100 total
   const mainArea = await prisma.parkingArea.upsert({
     where: { id: 'main-parking' },
-    update: {},
+    update: {
+      motorSlots: 50,
+      mobilSlots: 50,
+    },
     create: {
       id: 'main-parking',
       name: 'Area Parkir Utama',
       type: 'MAIN',
       capacity: 100,
+      motorSlots: 50,
+      mobilSlots: 50,
       currentOccupancy: 0,
+      currentMotor: 0,
+      currentMobil: 0,
       status: 'AVAILABLE',
     },
   });
 
+  // Guest Area: 10 motor + 10 mobil = 20 total
   const guestArea = await prisma.parkingArea.upsert({
     where: { id: 'guest-parking' },
-    update: {},
+    update: {
+      motorSlots: 10,
+      mobilSlots: 10,
+    },
     create: {
       id: 'guest-parking',
       name: 'Area Parkir Tamu',
       type: 'GUEST',
       capacity: 20,
+      motorSlots: 10,
+      mobilSlots: 10,
       currentOccupancy: 0,
+      currentMotor: 0,
+      currentMobil: 0,
       status: 'AVAILABLE',
     },
   });
 
+  // Overflow Area: 25 motor + 25 mobil = 50 total
   const overflowArea = await prisma.parkingArea.upsert({
     where: { id: 'overflow-parking' },
-    update: {},
+    update: {
+      motorSlots: 25,
+      mobilSlots: 25,
+    },
     create: {
       id: 'overflow-parking',
       name: 'Area Parkir Cadangan',
       type: 'OVERFLOW',
       capacity: 50,
+      motorSlots: 25,
+      mobilSlots: 25,
       currentOccupancy: 0,
+      currentMotor: 0,
+      currentMobil: 0,
       status: 'AVAILABLE',
     },
   });
@@ -223,27 +247,57 @@ async function main() {
   console.log('✅ Parking areas created');
 
   // ==================== CREATE PARKING SLOTS ====================
-  // Create slots for main area (sample 20 slots)
-  for (let i = 1; i <= 20; i++) {
+  // Main Area - 50 motor slots (M-01 to M-50)
+  for (let i = 1; i <= 50; i++) {
     await prisma.parkingSlot.upsert({
-      where: { areaId_slotNumber: { areaId: mainArea.id, slotNumber: `A-${i.toString().padStart(2, '0')}` } },
-      update: {},
+      where: { areaId_slotNumber: { areaId: mainArea.id, slotNumber: `M-${i.toString().padStart(2, '0')}` } },
+      update: { slotType: 'MOTOR' },
       create: {
         areaId: mainArea.id,
-        slotNumber: `A-${i.toString().padStart(2, '0')}`,
+        slotNumber: `M-${i.toString().padStart(2, '0')}`,
+        slotType: 'MOTOR',
         status: 'AVAILABLE',
       },
     });
   }
 
-  // Create slots for guest area (sample 10 slots)
+  // Main Area - 50 mobil slots (C-01 to C-50)
+  for (let i = 1; i <= 50; i++) {
+    await prisma.parkingSlot.upsert({
+      where: { areaId_slotNumber: { areaId: mainArea.id, slotNumber: `C-${i.toString().padStart(2, '0')}` } },
+      update: { slotType: 'MOBIL' },
+      create: {
+        areaId: mainArea.id,
+        slotNumber: `C-${i.toString().padStart(2, '0')}`,
+        slotType: 'MOBIL',
+        status: 'AVAILABLE',
+      },
+    });
+  }
+
+  // Guest Area - 10 motor slots (TM-01 to TM-10)
   for (let i = 1; i <= 10; i++) {
     await prisma.parkingSlot.upsert({
-      where: { areaId_slotNumber: { areaId: guestArea.id, slotNumber: `T-${i.toString().padStart(2, '0')}` } },
-      update: {},
+      where: { areaId_slotNumber: { areaId: guestArea.id, slotNumber: `TM-${i.toString().padStart(2, '0')}` } },
+      update: { slotType: 'MOTOR' },
       create: {
         areaId: guestArea.id,
-        slotNumber: `T-${i.toString().padStart(2, '0')}`,
+        slotNumber: `TM-${i.toString().padStart(2, '0')}`,
+        slotType: 'MOTOR',
+        status: 'AVAILABLE',
+      },
+    });
+  }
+
+  // Guest Area - 10 mobil slots (TC-01 to TC-10)
+  for (let i = 1; i <= 10; i++) {
+    await prisma.parkingSlot.upsert({
+      where: { areaId_slotNumber: { areaId: guestArea.id, slotNumber: `TC-${i.toString().padStart(2, '0')}` } },
+      update: { slotType: 'MOBIL' },
+      create: {
+        areaId: guestArea.id,
+        slotNumber: `TC-${i.toString().padStart(2, '0')}`,
+        slotType: 'MOBIL',
         status: 'AVAILABLE',
       },
     });
@@ -252,7 +306,7 @@ async function main() {
   console.log('✅ Parking slots created');
 
   // ==================== CREATE VIOLATION TYPES ====================
-  const violationTypes = await Promise.all([
+  await Promise.all([
     prisma.violationType.upsert({
       where: { code: 'PARKIR_AREA_SALAH' },
       update: {},
@@ -282,7 +336,7 @@ async function main() {
         code: 'OVER_TIME',
         name: 'Parkir Melebihi Batas Waktu',
         description: 'Parkir tamu melebihi durasi yang diizinkan',
-        baseFine: 25000, // per hour
+        baseFine: 25000,
         isActive: true,
       },
     }),
@@ -293,7 +347,7 @@ async function main() {
         code: 'MERUSAK_FASILITAS',
         name: 'Merusak Fasilitas Parkir',
         description: 'Kendaraan merusak fasilitas area parkir',
-        baseFine: 0, // Will be determined by damage
+        baseFine: 0,
         isActive: true,
       },
     }),
@@ -313,10 +367,10 @@ async function main() {
   console.log('✅ Violation types created');
 
   // ==================== CREATE SAMPLE VEHICLES ====================
-  const vehicles = await Promise.all([
+  await Promise.all([
     prisma.vehicle.upsert({
       where: { platNumber: 'B 1234 ABC' },
-      update: {},
+      update: { userId: warga1.id },
       create: {
         platNumber: 'B 1234 ABC',
         vehicleType: 'MOTOR',
@@ -325,11 +379,12 @@ async function main() {
         category: 'WARGA',
         status: 'ACTIVE',
         houseId: houses[0].id,
+        userId: warga1.id,
       },
     }),
     prisma.vehicle.upsert({
       where: { platNumber: 'B 5678 DEF' },
-      update: {},
+      update: { userId: warga1.id },
       create: {
         platNumber: 'B 5678 DEF',
         vehicleType: 'SEDAN',
@@ -338,11 +393,12 @@ async function main() {
         category: 'WARGA',
         status: 'ACTIVE',
         houseId: houses[0].id,
+        userId: warga1.id,
       },
     }),
     prisma.vehicle.upsert({
       where: { platNumber: 'D 1111 GHI' },
-      update: {},
+      update: { userId: warga2.id },
       create: {
         platNumber: 'D 1111 GHI',
         vehicleType: 'MOTOR',
@@ -351,11 +407,12 @@ async function main() {
         category: 'WARGA',
         status: 'ACTIVE',
         houseId: houses[1].id,
+        userId: warga2.id,
       },
     }),
     prisma.vehicle.upsert({
       where: { platNumber: 'D 2222 JKL' },
-      update: {},
+      update: { userId: warga3.id },
       create: {
         platNumber: 'D 2222 JKL',
         vehicleType: 'MINIBUS',
@@ -364,6 +421,7 @@ async function main() {
         category: 'WARGA',
         status: 'ACTIVE',
         houseId: houses[3].id,
+        userId: warga3.id,
       },
     }),
     prisma.vehicle.upsert({
@@ -377,6 +435,7 @@ async function main() {
         category: 'SERVICE',
         status: 'ACTIVE',
         houseId: null,
+        userId: null,
       },
     }),
   ]);
