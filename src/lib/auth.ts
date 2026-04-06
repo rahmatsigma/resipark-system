@@ -4,10 +4,12 @@ import { cookies } from 'next/headers';
 import { nanoid } from 'nanoid';
 
 const SESSION_COOKIE_NAME = 'parkir_session';
+export const SESSION_COOKIE_NAME_EXPORT = 'parkir_session'; // Export for API routes
 const SESSION_EXPIRY_DAYS = 7;
+const IDLE_TIMEOUT_MINUTES = 30 * 60 * 1000; // 30 minutes in ms
 
 // Simple in-memory session store (for demo - use Redis in production)
-const sessions = new Map<string, { userId: string; expiresAt: Date }>();
+const sessions = new Map<string, { userId: string; expiresAt: Date; lastActivity: number }>(); // Unix timestamp
 
 export interface SessionUser {
   id: string;
@@ -46,8 +48,9 @@ export async function createSession(userId: string): Promise<string> {
   const sessionId = nanoid(32);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRY_DAYS);
+  const now = Date.now();
   
-  sessions.set(sessionId, { userId, expiresAt });
+  sessions.set(sessionId, { userId, expiresAt, lastActivity: now });
   
   // Update last login
   await db.user.update({
@@ -63,7 +66,14 @@ export async function getSession(sessionId: string): Promise<{ userId: string } 
   const session = sessions.get(sessionId);
   if (!session) return null;
   
-  if (session.expiresAt < new Date()) {
+  const now = new Date();
+  if (session.expiresAt < now) {
+    sessions.delete(sessionId);
+    return null;
+  }
+  
+  // Check idle timeout
+  if (Date.now() - session.lastActivity > IDLE_TIMEOUT_MINUTES) {
     sessions.delete(sessionId);
     return null;
   }
@@ -193,6 +203,13 @@ export async function login(username: string, password: string): Promise<{ succe
   } catch (error) {
     console.error('Login error:', error);
     return { success: false, error: 'Terjadi kesalahan sistem' };
+  }
+}
+
+export function updateActivity(sessionId: string): void {
+  const session = sessions.get(sessionId);
+  if (session) {
+    session.lastActivity = Date.now();
   }
 }
 

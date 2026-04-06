@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, updateActivity, SESSION_COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get(SESSION_COOKIE_NAME_EXPORT)?.value;
+    
+    if (sessionId) {
+      updateActivity(sessionId);
+    }
+    
     const user = await getCurrentUser();
 
     if (!user) {

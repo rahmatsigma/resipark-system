@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { login } from '@/lib/auth';
+import { login, updateActivity, SESSION_COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,14 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await login(username, password);
+    
+    if (result.success) {
+      const cookieStore = await cookies();
+      const sessionId = cookieStore.get(SESSION_COOKIE_NAME_EXPORT)?.value;
+      if (sessionId) {
+        updateActivity(sessionId);
+      }
+    }
 
     if (!result.success) {
       return NextResponse.json({

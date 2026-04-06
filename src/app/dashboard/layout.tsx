@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -128,6 +128,42 @@ export default function DashboardLayout({
 
     fetchUser();
   }, [router]);
+
+  // Idle timeout tracker - update activity every 30 seconds if active
+  const updateUserActivity = useCallback(async () => {
+    try {
+      await fetch('/api/auth/activity', { 
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.log('Activity update failed (possibly logged out)');
+    }
+  }, []);
+
+  useEffect(() => {
+    let activityTimer: NodeJS.Timeout;
+    
+    const handleUserActivity = () => {
+      clearTimeout(activityTimer);
+      activityTimer = setTimeout(updateUserActivity, 25000); // Update every 25s
+    };
+
+    // Track user activity
+    ['mousemove', 'keydown', 'scroll', 'click'].forEach(event => {
+      document.addEventListener(event, handleUserActivity, true);
+    });
+
+    // Initial update
+    handleUserActivity();
+
+    return () => {
+      ['mousemove', 'keydown', 'scroll', 'click'].forEach(event => {
+        document.removeEventListener(event, handleUserActivity, true);
+      });
+      clearTimeout(activityTimer);
+    };
+  }, [updateUserActivity]);
 
   const handleLogout = async () => {
     try {
