@@ -1,5 +1,7 @@
 import { UserRole, VehicleType, VehicleCategory, VehicleStatus, AccessStatus, ViolationStatus, BlacklistStatus, BlacklistType } from '@/lib/db';
 
+export type { VehicleType, SlotType } from '@/lib/db';
+
 // User types
 export interface UserSession {
   id: string;
@@ -69,12 +71,12 @@ export interface ViolationWithDetails {
     platNumber: string;
     brand: string;
     color: string;
-  };
+  } | null;
   violationType: {
     code: string;
     name: string;
     baseFine: number;
-  };
+  } | null;
   description: string | null;
   baseFine: number;
   totalFine: number;
@@ -82,6 +84,7 @@ export interface ViolationWithDetails {
   status: ViolationStatus;
   violationDate: Date;
   paidAt: Date | null;
+  createdAt: Date;
 }
 
 // Blacklist types
@@ -91,12 +94,14 @@ export interface BlacklistWithVehicle {
     platNumber: string;
     brand: string;
     color: string;
-  };
+  } | null;
   reason: string;
   blacklistType: BlacklistType;
   startDate: Date;
   endDate: Date | null;
   status: BlacklistStatus;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Dashboard stats

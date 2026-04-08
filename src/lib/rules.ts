@@ -243,6 +243,8 @@ export async function isVehicleBlacklisted(vehicleId: string): Promise<{
 }
 
 // Validate plat number format (Indonesian format)
+import type { VehicleType, SlotType } from '@/types';
+
 export function validatePlatNumber(plat: string): { valid: boolean; error?: string } {
   const trimmed = plat.trim().toUpperCase();
   
@@ -258,4 +260,71 @@ export function validatePlatNumber(plat: string): { valid: boolean; error?: stri
   }
   
   return { valid: true };
+}
+
+// Get slot type based on vehicle type
+export function getSlotTypeByVehicle(vehicleType: VehicleType): SlotType {
+  if (vehicleType === 'MOTOR') {
+    return 'MOTOR';
+  }
+  return 'MOBIL'; // SEDAN, MINIBUS, PICKUP, TRUK
+}
+
+// Check parking capacity by slot type
+export async function checkParkingCapacityByType(
+  areaId: string, 
+  slotType: SlotType
+): Promise<{
+  available: boolean;
+  current: number;
+  capacity: number;
+  percentage: number;
+}> {
+  const area = await db.parkingArea.findUnique({
+    where: { id: areaId },
+  });
+  
+  if (!area) {
+    return { available: false, current: 0, capacity: 0, percentage: 0 };
+  }
+  
+  let current: number, capacity: number;
+  
+  if (slotType === 'MOTOR') {
+    current = area.currentMotor;
+    capacity = area.motorSlots;
+  } else {
+    current = area.currentMobil;
+    capacity = area.mobilSlots;
+  }
+  
+  const percentage = capacity > 0 ? Math.round((current / capacity) * 100) : 0;
+  
+  return {
+    available: current < capacity,
+    current,
+    capacity,
+    percentage,
+  };
+}
+
+// Get available parking slot by type
+export async function getAvailableSlotByType(
+  areaId: string, 
+  slotType: SlotType
+): Promise<{ id: string; slotNumber: string } | null> {
+  const slot = await db.parkingSlot.findFirst({
+    where: {
+      areaId,
+      slotType,
+      status: 'AVAILABLE',
+    },
+  });
+  
+  if (!slot) return null;
+  
+  return {
+    id: slot.id,
+    slotNumber: slot.slotNumber,
+  };
 }
