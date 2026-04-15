@@ -1,19 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
+import { NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/auth';
 
-// GET - List blacklist
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: 'Tidak terautentikasi' }
-      }, { status: 401 });
-    }
+// Untuk fungsi Tambah Blacklist Manual
+export async function POST(request: Request) {
+  const user = await getCurrentUser();
+
+  // Validasi RBAC: STRICLY ADMIN ONLY
+  if (!user || !hasPermission(user.role, ['ADMIN'])) {
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Akses Ditolak: Hanya Admin yang memiliki wewenang mengelola Blacklist'
+        }
+      },
+      { status: 403 }
+    );
+  }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');

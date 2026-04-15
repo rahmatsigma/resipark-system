@@ -1,21 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest} from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { calculateFine, checkAutoBlacklist } from '@/lib/rules';
-import type { BlacklistWithVehicle, ViolationWithDetails } from '@/types';
+import type { BlacklistWithVehicle, ViolationWithDetails } from @/types;
+import { NextResponse } from 'next/server';
+import { hasPermission } from '@/lib/auth';
 
-// GET - List violations
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: 'Tidak terautentikasi' }
-      }, { status: 401 });
-    }
+export async function POST(request: Request) {
+  // 1. Ambil session user saat ini
+  const user = await getCurrentUser();
+
+  // 2. Validasi RBAC: Hanya SATPAM dan ADMIN yang boleh
+  if (!user || !hasPermission(user.role, ['SATPAM', 'ADMIN'])) {
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Akses Ditolak: Hanya Satpam dan Admin yang dapat mencatat pelanggaran'
+        }
+      },
+      { status: 403 }
+    );
+  }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -84,7 +92,6 @@ export async function GET(request: NextRequest) {
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
     }, { status: 500 });
   }
-}
 
 // POST - Create violation
 export async function POST(request: NextRequest) {
