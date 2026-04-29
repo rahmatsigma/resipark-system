@@ -165,3 +165,22 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
+
+// House types for Prisma include queries
+export interface HouseBase {
+  id: string;
+  houseNumber: string;
+  block: string | null;
+}
+
+export interface HouseWithResidents extends HouseBase {
+  residents: Array<{
+    id: string;
+    houseId: string;
+    userId: string;
+    registeredAt: Date;
+    relationship: 'OWNER' | 'TENANT' | 'FAMILY';
+  }>;
+}
+
+export type HouseResidentCount = Pick<HouseWithResidents, 'id' | 'houseNumber' | 'block' | 'residents'>;

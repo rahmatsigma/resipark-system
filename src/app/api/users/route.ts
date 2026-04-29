@@ -1,9 +1,16 @@
+import type { HouseWithResidents } from '@/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
+async function hashPassword(password: string): Promise<string> {
+  const bcrypt = await import('bcryptjs');
+  return bcrypt.hash(password, 10);
+}
+
 // GET - List users
 export async function GET(request: NextRequest) {
+  // ... GET logic unchanged
   try {
     const user = await getCurrentUser();
     
@@ -119,6 +126,29 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await hashPassword(password);
 
+    // Validate house available if WARGA
+    let house: HouseWithResidents | null = null;
+    if (houseId && role === 'WARGA') {
+      house = await db.house.findUnique({
+        where: { id: houseId },
+        include: { residents: true }
+      });
+      
+      if (!house) {
+        return NextResponse.json({
+          success: false,
+          error: { code: 'HOUSE_NOT_FOUND', message: 'Rumah tidak ditemukan' }
+        }, { status: 404 });
+      }
+      
+      if (house.residents.length > 0) {
+        return NextResponse.json({
+          success: false,
+          error: { code: 'HOUSE_OCCUPIED', message: 'Rumah sudah ditempati' }
+        }, { status: 400 });
+      }
+    }
+
     const result = await db.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
@@ -159,7 +189,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function hashPassword(password: string): Promise<string> {
-  const bcrypt = await import('bcryptjs');
-  return bcrypt.hash(password, 10);
-}
