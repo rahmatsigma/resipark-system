@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import type { HouseWithResidents } from '@/types';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,12 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Car, Loader2, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Car, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -30,8 +32,27 @@ export default function RegisterPage() {
     username: '',
     password: '',
     confirmPassword: '',
+    houseId: '',
     houseNumber: '',
   });
+
+  const [houses, setHouses] = useState<HouseWithResidents[]>([]);
+
+  const fetchHouses = async () => {
+    try {
+      const response = await fetch('/api/houses?vacant=true');
+      const data = await response.json();
+      if (data.success) {
+        setHouses(data.data as HouseWithResidents[]);
+      }
+    } catch {
+      console.error('Failed to fetch houses');
+    }
+  };
+
+  useEffect(() => {
+    fetchHouses();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +84,7 @@ export default function RegisterPage() {
           phone: formData.phone,
           username: formData.username,
           password: formData.password,
-          houseNumber: formData.houseNumber || undefined,
+          houseNumber: formData.houseId || undefined,
         }),
       });
 
@@ -181,14 +202,21 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="houseNumber">Nomor Rumah</Label>
-              <Input
-                id="houseNumber"
-                placeholder="Contoh: A-01"
-                value={formData.houseNumber}
-                onChange={(e) => setFormData({ ...formData, houseNumber: e.target.value })}
-                disabled={loading}
-              />
+              <Label htmlFor="houseNumber">Pilih Rumah Kosong</Label>
+              <Select value={formData.houseId} onValueChange={(value) => setFormData({ ...formData, houseId: value, houseNumber: value ? value.split('-')[1] || value : '' })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih rumah kosong" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no-house">Tanpa rumah</SelectItem>
+                  {houses.map((house: HouseWithResidents) => (
+                    <SelectItem key={house.id} value={house.id}>
+                      Blok {house.block} - {house.houseNumber} (Kosong)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Hanya rumah kosong yang tersedia. Hubungi admin untuk rumah baru.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

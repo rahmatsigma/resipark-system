@@ -1,6 +1,8 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,9 +39,13 @@ import {
   Edit,
   UserX,
   Home,
+  Plus,
 } from 'lucide-react';
 
+import { DialogTrigger } from '@/components/ui/dialog';
+
 const ROLE_LABELS: Record<string, string> = {
+
   ADMIN: 'Admin',
   SATPAM: 'Satpam',
   WARGA: 'Warga',
@@ -95,7 +101,49 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  // New house dialog state
+  const [addHouseDialog, setAddHouseDialog] = useState(false);
+  const [addingHouse, setAddingHouse] = useState(false);
+  const blockRef = useRef<HTMLInputElement>(null);
+  const houseNumberRef = useRef<HTMLInputElement>(null);
+  const addressRef = useRef<HTMLInputElement>(null);
+
+  const handleAddHouse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingHouse(true);
+    const block = blockRef.current?.value;
+    const houseNumber = houseNumberRef.current?.value;
+    const address = addressRef.current?.value;
+
+    if (!block || !houseNumber) return;
+
+    try {
+      const response = await fetch('/api/houses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ block, houseNumber, address }),
+      });
+
+      if (response.ok) {
+        setAddHouseDialog(false);
+        fetchHouses(); // Refresh list
+        // Optional: auto select new house
+        const data = await response.json();
+        if (data.data) setFormData({...formData, houseId: data.data.id});
+      }
+    } catch {
+      alert('Gagal tambah rumah');
+    } finally {
+      setAddingHouse(false);
+      // Reset refs
+      blockRef.current && (blockRef.current.value = '');
+      houseNumberRef.current && (houseNumberRef.current.value = '');
+      addressRef.current && (addressRef.current.value = '');
+    }
+  };
+
 
   const [formData, setFormData] = useState({
     username: '',
@@ -133,7 +181,7 @@ export default function UsersPage() {
 
   const fetchHouses = async () => {
     try {
-      const response = await fetch('/api/houses');
+      const response = await fetch('/api/houses?vacant=true');
       const data = await response.json();
       if (data.success) {
         setHouses(data.data);
@@ -142,6 +190,7 @@ export default function UsersPage() {
       console.error('Failed to fetch houses:', err);
     }
   };
+
 
   useEffect(() => {
     fetchUsers();
@@ -381,33 +430,71 @@ export default function UsersPage() {
                           <Home className="h-4 w-4" />
                           Rumah {editingUser?.house && `(Saat ini: Blok ${editingUser.house.block} - ${editingUser.house.houseNumber})`}
                         </Label>
-                        <Select
-                          value={formData.houseId}
-                          onValueChange={(value) => setFormData({ ...formData, houseId: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih rumah" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {/* Show current house if editing */}
-                            {editingUser?.house && (
-                              <SelectItem key={editingUser.house.id} value={editingUser.house.id}>
-                                Blok {editingUser.house.block} - No. {editingUser.house.houseNumber} (Rumah Saat Ini)
-                              </SelectItem>
-                            )}
-                            {/* Show vacant houses */}
-                            {houses.map((house) => (
-                              <SelectItem key={house.id} value={house.id}>
-                                Blok {house.block} - No. {house.houseNumber}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex gap-2">
+                          <Select
+                            value={formData.houseId}
+                            onValueChange={(value) => setFormData({ ...formData, houseId: value })}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Pilih rumah kosong" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {editingUser?.house && (
+                                <SelectItem key={editingUser.house.id} value={editingUser.house.id}>
+                                  Blok {editingUser.house.block} - No. {editingUser.house.houseNumber} (Rumah Saat Ini)
+                                </SelectItem>
+                              )}
+                              {houses.map((house) => (
+                                <SelectItem key={house.id} value={house.id}>
+                                  Blok {house.block} - No. {house.houseNumber} (Kosong)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Dialog open={addHouseDialog} onOpenChange={setAddHouseDialog}>
+                            <DialogTrigger asChild>
+                              <Button type="button" variant="outline" size="sm" title="Tambah Rumah Baru">
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Tambah Rumah Baru</DialogTitle>
+                                <DialogDescription>Rumah baru akan otomatis kosong/status OCCUPIED</DialogDescription>
+                              </DialogHeader>
+                              <form onSubmit={handleAddHouse}>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="newBlock">Blok</Label>
+                                    <Input id="newBlock" ref={blockRef} required />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="newHouseNumber">No Rumah</Label>
+                                    <Input id="newHouseNumber" ref={houseNumberRef} placeholder="A-01" required />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="newAddress">Alamat (opsional)</Label>
+                                    <Input id="newAddress" ref={addressRef} />
+                                  </div>
+                                </div>
+                                <DialogFooter className="mt-4">
+                                  <Button type="button" variant="outline" onClick={() => setAddHouseDialog(false)}>
+                                    Batal
+                                  </Button>
+                                  <Button type="submit" disabled={addingHouse}>
+                                    Tambah Rumah
+                                  </Button>
+                                </DialogFooter>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          Pilih rumah yang ditempati warga
+                          Hanya rumah kosong yang bisa dipilih. Admin bisa tambah baru.
                         </p>
                       </div>
                     )}
+
                   </div>
 
                   <DialogFooter>

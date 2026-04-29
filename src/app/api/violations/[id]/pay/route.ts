@@ -38,56 +38,61 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Update violation status
-    const updated = await db.violation.update({
-      where: { id },
-      data: {
-        status: 'PAID',
-        paidAt: new Date(),
-      },
-    });
-
-    // Create payment record
-    await db.payment.create({
-      data: {
-        violationId: id,
-        amount: violation.totalFine,
-        paymentMethod: 'CASH',
-        status: 'COMPLETED',
-        paidAt: new Date(),
-      },
-    });
-
-    // Check if vehicle should be removed from blacklist
-    const activeBlacklist = await db.blacklist.findFirst({
-      where: {
-        vehicleId: violation.vehicleId,
-        status: 'ACTIVE',
-        blacklistType: 'AUTO_DENDA',
-      },
-    });
-
-    if (activeBlacklist) {
-      // Check if all fines are paid
-      const pendingFines = await db.violation.count({
-        where: {
-          vehicleId: violation.vehicleId,
-          status: 'PENDING',
+    // Atomic transaction: create payment, mark violation PAID,
+    // and remove blacklist (if any) simultaneously
+    const result = await db.$transaction(async (tx) => {
+      // Update violation status to PAID
+      const updatedViolation = await tx.violation.update({
+        where: { id },
+        data: {
+          status: 'PAID',
+          paidAt: new Date(),
         },
       });
 
-      if (pendingFines === 0) {
-        await db.blacklist.update({
+      // Create payment record
+      const payment = await tx.payment.create({
+        data: {
+          violationId: id,
+          amount: violation.totalFine,
+          paymentMethod: 'CASH',
+          status: 'COMPLETED',
+          paidAt: new Date(),
+        },
+      });
+
+      // Remove any active blacklist for this vehicle
+      const activeBlacklist = await tx.blacklist.findFirst({
+        where: {
+          vehicleId: violation.vehicleId,
+          status: 'ACTIVE',
+        },
+      });
+
+      let blacklistRemoved = false;
+
+      if (activeBlacklist) {
+        await tx.blacklist.update({
           where: { id: activeBlacklist.id },
           data: { status: 'REMOVED' },
         });
+        blacklistRemoved = true;
+      }
 
-        await db.vehicle.update({
+      // Reactivate vehicle if it was blacklisted
+      const vehicle = await tx.vehicle.findUnique({
+        where: { id: violation.vehicleId },
+      });
+
+      if (vehicle?.status === 'BLACKLISTED') {
+        await tx.vehicle.update({
           where: { id: violation.vehicleId },
           data: { status: 'ACTIVE' },
         });
       }
-    }
+
+      return { updatedViolation, payment, blacklistRemoved };
+    });
 
     // Log activity
     await logActivity({
@@ -100,10 +105,10 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      data: updated,
+      data: result.updatedViolation,
     });
-  } catch (error) {
-    console.error('Pay fine error:', error);
+  } catch (err) {
+    console.error('Pay fine error:', err);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

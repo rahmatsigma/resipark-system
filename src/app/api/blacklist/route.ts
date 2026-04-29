@@ -6,24 +6,26 @@ import { NextResponse } from 'next/server';
 import { hasPermission } from '@/lib/auth';
 
 // Untuk fungsi Tambah Blacklist Manual
-export async function POST(request: Request) {
-  const user = await getCurrentUser();
+export async function GET(request: Request) {
+  try {
+    const user = await getCurrentUser();
 
-  // Validasi RBAC: STRICLY ADMIN ONLY
-  if (!user || !hasPermission(user.role, ['ADMIN'])) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Akses Ditolak: Hanya Admin yang memiliki wewenang mengelola Blacklist'
-        }
-      },
-      { status: 403 }
-    );
-  }
+    // Validasi RBAC: STRICLY ADMIN ONLY
+    if (!user || !hasPermission(user.role, ['ADMIN'])) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Akses Ditolak: Hanya Admin yang memiliki wewenang mengelola Blacklist'
+          }
+        },
+        { status: 403 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
+
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
@@ -90,6 +92,7 @@ export async function POST(request: Request) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
+
     
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({

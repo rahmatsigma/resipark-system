@@ -1,3 +1,4 @@
+import type { HouseWithResidents } from '@/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
@@ -52,12 +53,33 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Cari rumah jika ada
-    let house = null;
+    // Validate house available if houseNumber
+    let house: HouseWithResidents | null = null;
     if (houseNumber) {
       house = await db.house.findUnique({
         where: { houseNumber },
+        include: { residents: true }
       });
+      
+      if (!house) {
+        return NextResponse.json({
+          success: false,
+          error: { 
+            code: 'HOUSE_NOT_FOUND', 
+            message: 'Rumah tidak ditemukan' 
+          }
+        }, { status: 404 });
+      }
+      
+      if (house.residents.length > 0) {
+        return NextResponse.json({
+          success: false,
+          error: { 
+            code: 'HOUSE_OCCUPIED', 
+            message: 'Rumah sudah ditempati. Hubungi admin.' 
+          }
+        }, { status: 400 });
+      }
     }
 
     // Buat user baru
@@ -114,3 +136,4 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+

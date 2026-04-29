@@ -57,13 +57,46 @@ export async function GET() {
       },
     });
 
-    // Get parking areas
+    // Get parking areas config
     const mainArea = await db.parkingArea.findUnique({
       where: { id: 'main-parking' },
     });
 
     const guestArea = await db.parkingArea.findUnique({
       where: { id: 'guest-parking' },
+    });
+
+    // Get real-time occupancy from ParkingSlot (bypass stale cached counters)
+    const mainCurrentMotor = await db.parkingSlot.count({
+      where: {
+        areaId: 'main-parking',
+        status: 'OCCUPIED',
+        slotType: 'MOTOR',
+      },
+    });
+
+    const mainCurrentMobil = await db.parkingSlot.count({
+      where: {
+        areaId: 'main-parking',
+        status: 'OCCUPIED',
+        slotType: 'MOBIL',
+      },
+    });
+
+    const guestCurrentMotor = await db.parkingSlot.count({
+      where: {
+        areaId: 'guest-parking',
+        status: 'OCCUPIED',
+        slotType: 'MOTOR',
+      },
+    });
+
+    const guestCurrentMobil = await db.parkingSlot.count({
+      where: {
+        areaId: 'guest-parking',
+        status: 'OCCUPIED',
+        slotType: 'MOBIL',
+      },
     });
 
     // Get violations stats
@@ -115,6 +148,18 @@ export async function GET() {
       where: { status: 'ACTIVE' },
     });
 
+    // Build main area stats from real slot occupancy
+    const mainCapacity = mainArea?.capacity || 100;
+    const mainMotorSlots = mainArea?.motorSlots || 50;
+    const mainMobilSlots = mainArea?.mobilSlots || 50;
+    const mainOccupied = mainCurrentMotor + mainCurrentMobil;
+
+    // Build guest area stats from real slot occupancy
+    const guestCapacity = guestArea?.capacity || 20;
+    const guestMotorSlots = guestArea?.motorSlots || 10;
+    const guestMobilSlots = guestArea?.mobilSlots || 10;
+    const guestOccupied = guestCurrentMotor + guestCurrentMobil;
+
     const stats = {
       today: {
         totalEntries: todayEntries,
@@ -124,26 +169,26 @@ export async function GET() {
       },
       parking: {
         main: {
-          capacity: mainArea?.capacity || 100,
-          occupied: mainArea?.currentOccupancy || 0,
-          percentage: mainArea ? Math.round((mainArea.currentOccupancy / mainArea.capacity) * 100) : 0,
-          motorSlots: mainArea?.motorSlots || 50,
-          mobilSlots: mainArea?.mobilSlots || 50,
-          currentMotor: mainArea?.currentMotor || 0,
-          currentMobil: mainArea?.currentMobil || 0,
-          motorAvailable: (mainArea?.motorSlots || 50) - (mainArea?.currentMotor || 0),
-          mobilAvailable: (mainArea?.mobilSlots || 50) - (mainArea?.currentMobil || 0),
+          capacity: mainCapacity,
+          occupied: mainOccupied,
+          percentage: Math.round((mainOccupied / mainCapacity) * 100),
+          motorSlots: mainMotorSlots,
+          mobilSlots: mainMobilSlots,
+          currentMotor: mainCurrentMotor,
+          currentMobil: mainCurrentMobil,
+          motorAvailable: mainMotorSlots - mainCurrentMotor,
+          mobilAvailable: mainMobilSlots - mainCurrentMobil,
         },
         guest: {
-          capacity: guestArea?.capacity || 20,
-          occupied: guestArea?.currentOccupancy || 0,
-          percentage: guestArea ? Math.round((guestArea.currentOccupancy / guestArea.capacity) * 100) : 0,
-          motorSlots: guestArea?.motorSlots || 10,
-          mobilSlots: guestArea?.mobilSlots || 10,
-          currentMotor: guestArea?.currentMotor || 0,
-          currentMobil: guestArea?.currentMobil || 0,
-          motorAvailable: (guestArea?.motorSlots || 10) - (guestArea?.currentMotor || 0),
-          mobilAvailable: (guestArea?.mobilSlots || 10) - (guestArea?.currentMobil || 0),
+          capacity: guestCapacity,
+          occupied: guestOccupied,
+          percentage: Math.round((guestOccupied / guestCapacity) * 100),
+          motorSlots: guestMotorSlots,
+          mobilSlots: guestMobilSlots,
+          currentMotor: guestCurrentMotor,
+          currentMobil: guestCurrentMobil,
+          motorAvailable: guestMotorSlots - guestCurrentMotor,
+          mobilAvailable: guestMobilSlots - guestCurrentMobil,
         },
       },
       violations: {
