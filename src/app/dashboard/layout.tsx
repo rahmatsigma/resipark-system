@@ -198,8 +198,8 @@ export default function DashboardLayout({
                 <Car className="w-4 h-4 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-sm">SIPARKIR</span>
-                <span className="text-xs text-muted-foreground">Manajemen Parkir</span>
+                <span className="font-bold text-sm">RESIPARK SYSTEM</span>
+                <span className="text-xs text-muted-foreground">Manajemen Parkir Perumahan</span>
               </div>
             </div>
           </SidebarHeader>
