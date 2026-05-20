@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { login, updateActivity, SESSION_COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     return NextResponse.json({
       success: false,
       error: {

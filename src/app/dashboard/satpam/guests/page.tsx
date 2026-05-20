@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,12 +28,11 @@ import {
   Plus, 
   AlertCircle, 
   Loader2,
-  Ban,
   CheckCircle,
   UserCheck,
   Clock,
 } from 'lucide-react';
-import { formatDateTime, getStatusColor } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 interface GuestAccess {
   id: string;
@@ -80,16 +80,16 @@ export default function GuestsPage() {
       if (data.success) {
         setGuests(data.data);
       }
-    } catch (err) {
-      console.error('Failed to fetch guests:', err);
+    } catch (error) {
+      logger.error('Failed to fetch guests:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     fetchGuests();
-  });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +121,7 @@ export default function GuestsPage() {
       } else {
         setError(data.error?.message || 'Gagal meregistrasi tamu');
       }
-    } catch (err) {
+    } catch {
       setError('Terjadi kesalahan sistem');
     } finally {
       setSaving(false);
@@ -143,7 +143,7 @@ export default function GuestsPage() {
       } else {
         alert(data.error?.message || 'Gagal memperpanjang waktu');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     }
   };

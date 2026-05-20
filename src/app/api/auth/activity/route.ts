@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { updateActivity } from '@/lib/auth';
 import { SESSION_COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const cookieStore = await cookies();
     const sessionId = cookieStore.get(SESSION_COOKIE_NAME_EXPORT)?.value;
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       message: 'Activity updated'
     });
   } catch (error) {
-    console.error('Update activity error:', error);
+      logger.error('Update activity error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Gagal update activity' }

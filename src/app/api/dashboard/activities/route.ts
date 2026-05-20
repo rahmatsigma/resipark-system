@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function GET() {
@@ -32,7 +33,7 @@ export async function GET() {
       data: activities,
     });
   } catch (error) {
-    console.error('Activities fetch error:', error);
+    logger.error('Activities fetch error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

@@ -20,7 +20,6 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
-  DollarSign,
 } from 'lucide-react';
 import { VIOLATION_LABELS } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils';
@@ -85,7 +84,7 @@ export default function SatpamViolationsPage() {
       } else {
         setError(data.error?.message || 'Gagal mencatat pelanggaran');
       }
-    } catch (err) {
+    } catch {
       setError('Terjadi kesalahan sistem');
     } finally {
       setLoading(false);

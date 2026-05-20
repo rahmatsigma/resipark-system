@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,12 +45,6 @@ interface Vehicle {
   registeredAt: string;
 }
 
-interface House {
-  id: string;
-  houseNumber: string;
-  block: string;
-}
-
 export default function WargaVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [quota, setQuota] = useState({ current: 0, max: 2 });
@@ -85,16 +80,16 @@ export default function WargaVehiclesPage() {
         const data = await quotaRes.json();
         setQuota(data.data || { current: 0, max: 2 });
       }
-    } catch (err) {
-      console.error('Failed to fetch data:', err);
+    } catch (error) {
+      logger.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     fetchData();
-  });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +117,7 @@ export default function WargaVehiclesPage() {
       } else {
         setError(data.error?.message || 'Terjadi kesalahan');
       }
-    } catch (err) {
+    } catch {
       setError('Terjadi kesalahan sistem');
     } finally {
       setSaving(false);
@@ -144,7 +139,7 @@ export default function WargaVehiclesPage() {
       } else {
         alert(data.error?.message || 'Gagal menghapus kendaraan');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     }
   };

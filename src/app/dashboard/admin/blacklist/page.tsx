@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +43,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { formatDateTime, getStatusColor } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 interface BlacklistItem {
   id: string;
@@ -80,7 +81,7 @@ export default function BlacklistPage() {
     durationDays: '',
   });
 
-  const fetchBlacklists = async () => {
+  const fetchBlacklists = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -96,15 +97,15 @@ export default function BlacklistPage() {
         setTotalPages(data.pagination.totalPages);
       }
     } catch (err) {
-      console.error('Failed to fetch blacklists:', err);
+      logger.error('Failed to fetch blacklists:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search]);
 
   useEffect(() => {
     fetchBlacklists();
-  }, [page, search]);
+  }, [fetchBlacklists]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +138,7 @@ export default function BlacklistPage() {
       } else {
         setError(data.error?.message || 'Gagal menambahkan ke blacklist');
       }
-    } catch (err) {
+    } catch {
       setError('Terjadi kesalahan sistem');
     } finally {
       setSaving(false);
@@ -159,7 +160,7 @@ export default function BlacklistPage() {
       } else {
         alert(data.error?.message || 'Gagal menghapus dari blacklist');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     }
   };

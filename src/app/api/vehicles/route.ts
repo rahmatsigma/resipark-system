@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { checkVehicleQuota, validatePlatNumber } from '@/lib/rules';
+import { logger } from '@/lib/logger';
 
 // GET - List vehicles
 export async function GET(request: NextRequest) {
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') || '';
     const status = searchParams.get('status') || '';
 
-    const where: any = {};
 
+    const where: Record<string, unknown> = {};
     // For WARGA role, only show their own vehicles (by userId)
     if (user.role === 'WARGA') {
       where.userId = user.id;
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Get vehicles error:', error);
+    logger.error('Get vehicles error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
       data: vehicle,
     }, { status: 201 });
   } catch (error) {
-    console.error('Create vehicle error:', error);
+    logger.error('Create vehicle error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

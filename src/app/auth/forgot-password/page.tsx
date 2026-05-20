@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Car, Loader2, AlertCircle, ArrowLeft, CheckCircle, Key } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, CheckCircle, Key } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ForgotPasswordPage() {

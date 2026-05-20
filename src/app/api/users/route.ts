@@ -1,5 +1,6 @@
 import type { HouseWithResidents } from '@/types';
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -27,8 +28,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
 
-    const where: any = {};
 
+    const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
         { username: { contains: search } },
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Get users error:', error);
+    logger.error('Get users error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
       message: 'User berhasil dibuat',
     }, { status: 201 });
   } catch (error) {
-    console.error('Create user error:', error);
+    logger.error('Create user error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

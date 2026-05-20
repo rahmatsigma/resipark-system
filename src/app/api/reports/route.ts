@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,10 +30,10 @@ export async function GET(request: NextRequest) {
     const toDate = new Date(to);
     toDate.setHours(23, 59, 59, 999);
 
-    let data: any[] = [];
+    let data: Record<string, unknown>[] = [];
     let summary = { total: 0, amount: 0 };
     let title = '';
-    let period = `${from} s/d ${to}`;
+    const period = `${from} s/d ${to}`;
 
     switch (type) {
       case 'access':
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Generate report error:', error);
+    logger.error('Generate report error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

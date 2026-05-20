@@ -2,7 +2,8 @@ import type { HouseWithResidents } from '@/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
-import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
+import { logActivity } from '@/lib/activity';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
       message: 'Registrasi berhasil. Silakan login.',
     }, { status: 201 });
   } catch (error) {
-    console.error('Register error:', error);
+    logger.error('Register error:', error);
     return NextResponse.json({
       success: false,
       error: {

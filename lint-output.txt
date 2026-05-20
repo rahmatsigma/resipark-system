@@ -1,0 +1,80 @@
+C:\Users\Farouq\Documents\4. Matkul Smt 4\Rekayasa Perangkat Lunak\ProjectRPL\resipark-system>npm run lint
+
+> nextjs_tailwind_shadcn_ts@0.2.0 lint
+> eslint .
+
+
+C:\Users\Farouq\Documents\4. Matkul Smt 4\Rekayasa Perangkat Lunak\ProjectRPL\resipark-system>node_modules\.bin\tsc.cmd --noEmit
+
+C:\Users\Farouq\Documents\4. Matkul Smt 4\Rekayasa Perangkat Lunak\ProjectRPL\resipark-system>npm run build
+
+> nextjs_tailwind_shadcn_ts@0.2.0 build
+> next build && node scripts/copy-standalone.mjs
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 9.4s
+  Skipping validation of types
+✓ Collecting page data using 11 workers in 2.1s    
+✓ Generating static pages using 11 workers (46/46) in 675.0ms
+✓ Finalizing page optimization in 2.4s    
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api
+├ ƒ /api/access
+├ ƒ /api/access/entry
+├ ƒ /api/access/exit
+├ ƒ /api/auth/activity
+├ ƒ /api/auth/forgot-password
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/auth/register
+├ ƒ /api/blacklist
+├ ƒ /api/dashboard/activities
+├ ƒ /api/dashboard/charts
+├ ƒ /api/dashboard/stats
+├ ƒ /api/guests
+├ ƒ /api/guests/[id]/extend
+├ ƒ /api/houses
+├ ƒ /api/reports
+├ ƒ /api/reports/export
+├ ƒ /api/users
+├ ƒ /api/users/[id]
+├ ƒ /api/vehicles
+├ ƒ /api/vehicles/[id]
+├ ƒ /api/vehicles/quota
+├ ƒ /api/violations
+├ ƒ /api/violations/[id]/pay
+├ ○ /auth/forgot-password
+├ ○ /auth/register
+├ ○ /dashboard/admin
+├ ○ /dashboard/admin/access
+├ ○ /dashboard/admin/blacklist
+├ ○ /dashboard/admin/reports
+├ ○ /dashboard/admin/users
+├ ○ /dashboard/admin/vehicles
+├ ○ /dashboard/admin/violations
+├ ○ /dashboard/pengelola
+├ ○ /dashboard/pengelola/reports
+├ ○ /dashboard/pengelola/statistics
+├ ○ /dashboard/satpam
+├ ○ /dashboard/satpam/entry
+├ ○ /dashboard/satpam/exit
+├ ○ /dashboard/satpam/guests
+├ ○ /dashboard/satpam/violations
+├ ○ /dashboard/warga
+├ ○ /dashboard/warga/history
+├ ○ /dashboard/warga/vehicles
+└ ○ /dashboard/warga/violations
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

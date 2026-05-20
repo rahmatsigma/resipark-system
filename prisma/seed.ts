@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, UserStatus, HouseStatus, VehicleType, VehicleCategory, VehicleStatus, ParkingAreaType, ParkingAreaStatus, ViolationTypeCode, SlotType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -10,7 +10,7 @@ async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10);
 
   // Admin
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'admin' },
     update: {},
     create: {
@@ -25,7 +25,7 @@ async function main() {
   });
 
   // Satpam
-  const satpam1 = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'satpam1' },
     update: {},
     create: {
@@ -39,7 +39,7 @@ async function main() {
     },
   });
 
-  const satpam2 = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'satpam2' },
     update: {},
     create: {
@@ -54,7 +54,7 @@ async function main() {
   });
 
   // Pengelola
-  const pengelola = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'pengelola' },
     update: {},
     create: {
@@ -224,7 +224,7 @@ async function main() {
   });
 
   // Overflow Area: 25 motor + 25 mobil = 50 total
-  const overflowArea = await prisma.parkingArea.upsert({
+  await prisma.parkingArea.upsert({
     where: { id: 'overflow-parking' },
     update: {
       motorSlots: 25,

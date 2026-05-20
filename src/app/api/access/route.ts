@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,15 +20,21 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
 
-    const where: any = {};
 
-    // For WARGA, only show their vehicles' access
+    const where: Record<string, unknown> = {};
+    const vehicleWhere: Record<string, unknown> = {};
+
+    // For WARGA, only show their own vehicles' access
     if (user.role === 'WARGA' && user.houseId) {
-      where.vehicle = { houseId: user.houseId };
+      vehicleWhere.houseId = user.houseId;
     }
 
     if (search) {
-      where.vehicle = { ...where.vehicle, platNumber: { contains: search.toUpperCase() } };
+      vehicleWhere.platNumber = { contains: search.toUpperCase() };
+    }
+
+    if (Object.keys(vehicleWhere).length > 0) {
+      where.vehicle = vehicleWhere;
     }
 
     if (status) {
@@ -71,7 +78,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Get access records error:', error);
+    logger.error('Get access records error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

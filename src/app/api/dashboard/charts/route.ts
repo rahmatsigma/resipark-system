@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,13 @@ export async function GET(request: NextRequest) {
     if (period === '30d') days = 30;
     if (period === '90d') days = 90;
 
-    const chartData = [];
+    type ChartDataPoint = {
+      date: string;
+      entries: number;
+      exits: number;
+    };
+
+    const chartData: ChartDataPoint[] = [];
 
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
@@ -60,7 +67,7 @@ export async function GET(request: NextRequest) {
       data: chartData,
     });
   } catch (error) {
-    console.error('Get chart data error:', error);
+    logger.error('Get chart data error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

@@ -1,4 +1,5 @@
 import { NextRequest, } from 'next/server';
+import { logger } from '@/lib/logger';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
@@ -31,8 +32,8 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
 
-    const where: any = {};
 
+    const where: Record<string, unknown> = {};
     if (status) {
       where.status = status;
     } else {
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Get blacklist error:', error);
+    logger.error('Get blacklist error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -184,7 +185,7 @@ export async function POST(request: NextRequest) {
       data: blacklist,
     }, { status: 201 });
   } catch (error) {
-    console.error('Add blacklist error:', error);
+    logger.error('Add blacklist error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -265,7 +266,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Kendaraan berhasil dihapus dari blacklist',
     });
   } catch (error) {
-    console.error('Remove blacklist error:', error);
+    logger.error('Remove blacklist error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

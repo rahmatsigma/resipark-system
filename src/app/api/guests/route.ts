@@ -3,9 +3,10 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { isVehicleBlacklisted, checkParkingCapacity, getAvailableSlot } from '@/lib/rules';
+import { logger } from '@/lib/logger';
 
 // GET - List guests
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
     
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       data: guests,
     });
   } catch (error) {
-    console.error('Get guests error:', error);
+    logger.error('Get guests error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -120,11 +121,11 @@ export async function POST(request: NextRequest) {
 
     // Get available slot
     const slotId = await getAvailableSlot('guest-parking');
-    let slotNumber = null;
+    let slotNumber: string | null = null;
 
     if (slotId) {
       const slot = await db.parkingSlot.findUnique({ where: { id: slotId } });
-      slotNumber = slot?.slotNumber;
+      slotNumber = slot?.slotNumber ?? null;
     }
 
     // Create access record and guest access in transaction
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
       data: result,
     }, { status: 201 });
   } catch (error) {
-    console.error('Create guest error:', error);
+    logger.error('Create guest error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

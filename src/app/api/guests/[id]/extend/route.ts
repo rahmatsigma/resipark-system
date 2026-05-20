@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
+import { logger } from '@/lib/logger';
 
 export async function PUT(
   request: NextRequest,
@@ -79,7 +80,7 @@ export async function PUT(
       data: updated,
     });
   } catch (error) {
-    console.error('Extend guest error:', error);
+    logger.error('Extend guest error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

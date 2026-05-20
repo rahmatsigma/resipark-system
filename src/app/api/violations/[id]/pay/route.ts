@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
@@ -108,7 +109,7 @@ export async function PUT(
       data: result.updatedViolation,
     });
   } catch (err) {
-    console.error('Pay fine error:', err);
+    logger.error('Pay fine error:', err);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

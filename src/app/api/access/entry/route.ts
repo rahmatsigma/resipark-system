@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
+import { logger } from '@/lib/logger';
 import {
   isVehicleBlacklisted,
   getSlotTypeByVehicle,
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     const formattedPlat = platNumber.toUpperCase().trim();
 
     // Find vehicle
-    let vehicle = await db.vehicle.findUnique({
+    const vehicle = await db.vehicle.findUnique({
       where: { platNumber: formattedPlat },
       include: {
         house: true,
@@ -179,7 +180,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Update area occupancy counts
-    const updateData: any = { currentOccupancy: { increment: 1 } };
+    const updateData: {
+      currentOccupancy: { increment: number };
+      currentMotor?: { increment: number };
+      currentMobil?: { increment: number };
+    } = { currentOccupancy: { increment: 1 } };
     if (slotType === 'MOTOR') {
       updateData.currentMotor = { increment: 1 };
     } else {
@@ -227,7 +232,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Access entry error:', error);
+    logger.error('Access entry error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

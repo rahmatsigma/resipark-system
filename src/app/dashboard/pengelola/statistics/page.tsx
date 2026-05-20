@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +68,7 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('7d');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [statsRes, chartRes] = await Promise.all([
@@ -85,21 +86,29 @@ export default function StatisticsPage() {
         setChartData(data.data || []);
       }
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      logger.error('Failed to fetch stats:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
-  useState(() => {
+  useEffect(() => {
     fetchData();
-  });
+  }, [fetchData]);
 
   // Calculate max for chart scaling
   const maxValue = Math.max(
     ...chartData.map(d => Math.max(d.entries, d.exits)),
     1
   );
+
+  if (loading && !stats) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
+        Memuat statistik...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

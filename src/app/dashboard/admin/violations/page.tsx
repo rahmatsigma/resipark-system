@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -20,7 +21,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Search, 
   Loader2,
@@ -30,8 +30,7 @@ import {
   CheckCircle,
   DollarSign,
 } from 'lucide-react';
-import { formatDateTime, formatCurrency, getStatusColor } from '@/lib/utils';
-import { VIOLATION_LABELS } from '@/lib/utils';
+import { formatDateTime, formatCurrency, getStatusColor, VIOLATION_LABELS } from '@/lib/utils';
 
 interface Violation {
   id: string;
@@ -62,7 +61,7 @@ export default function AdminViolationsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchViolations = async () => {
+  const fetchViolations = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -79,15 +78,15 @@ export default function AdminViolationsPage() {
         setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (err) {
-      console.error('Failed to fetch violations:', err);
+      logger.error('Failed to fetch violations:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, statusFilter]);
 
-  useState(() => {
+  useEffect(() => {
     fetchViolations();
-  });
+  }, [fetchViolations]);
 
   const handleMarkAsPaid = async (id: string) => {
     if (!confirm('Tandai denda ini sebagai sudah dibayar?')) return;
@@ -104,7 +103,7 @@ export default function AdminViolationsPage() {
       } else {
         alert(data.error?.message || 'Gagal mengupdate status');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     }
   };
