@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "prisma": {
-    "seed": "bun prisma/seed.ts"
+    "seed": "npx ts-node --esm prisma/seed.ts"
   },
   "scripts": {
     "dev": "next dev -p 3000",
@@ -14,6 +14,8 @@
     "test:unit": "bun test src/__tests__/rules.test.ts src/__tests__/utils.test.ts",
     "test:api": "bun test src/__tests__/api.test.ts",
     "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:setup": "prisma db push && prisma db seed",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset"
