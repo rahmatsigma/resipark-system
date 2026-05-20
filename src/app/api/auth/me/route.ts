@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, updateActivity, SESSION_COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { cookies } from 'next/headers';
 
 export async function GET() {
@@ -28,7 +29,7 @@ export async function GET() {
       data: user
     });
   } catch (error) {
-    console.error('Get current user error:', error);
+    logger.error('Get current user error:', error);
     return NextResponse.json({
       success: false,
       error: {

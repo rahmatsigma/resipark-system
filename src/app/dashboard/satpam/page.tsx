@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -152,7 +153,7 @@ export default function SatpamDashboard() {
           setStats(data.data);
         }
       } catch (error) {
-        console.error('Failed to fetch stats:', error);
+        logger.error('Failed to fetch stats:', error);
       } finally {
         setLoading(false);
       }

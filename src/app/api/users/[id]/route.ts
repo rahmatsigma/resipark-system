@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
+import { logger } from '@/lib/logger';
 
 // GET - Get user by ID
 export async function GET(
@@ -55,7 +56,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Get user error:', error);
+    logger.error('Get user error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -109,7 +110,7 @@ export async function PUT(
 
     const result = await db.$transaction(async (tx) => {
       // Update user
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (fullName) updateData.fullName = fullName;
       if (email) updateData.email = email;
       if (phone !== undefined) updateData.phone = phone || null;
@@ -164,7 +165,7 @@ export async function PUT(
       message: 'User berhasil diupdate',
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    logger.error('Update user error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -227,7 +228,7 @@ export async function DELETE(
       message: 'User berhasil dinonaktifkan',
     });
   } catch (error) {
-    console.error('Delete user error:', error);
+    logger.error('Delete user error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

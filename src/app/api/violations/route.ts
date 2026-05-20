@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server';
-import { db } from '@/lib/db';
+import { db, BlacklistType, ViolationTypeCode } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { calculateFine, checkAutoBlacklist } from '@/lib/rules';
-import type { BlacklistWithVehicle, ViolationWithDetails } from '@/types';
+import type { BlacklistWithVehicle } from '@/types';
 import { NextResponse } from 'next/server';
 import { hasPermission } from '@/lib/auth';
 
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
     const vehicleId = searchParams.get('vehicleId') || '';
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     // For WARGA, only show their vehicles' violations
     if (user.role === 'WARGA' && user.houseId) {
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('Get violations error:', err);
+    logger.error('Get violations error:', err);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
     // Calculate fine with multiplier
     const { baseFine, multiplier, totalFine } = await calculateFine(
       vehicle.id,
-      violationTypeCode as any,
+      violationTypeCode as ViolationTypeCode,
       customAmount
     );
 
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
         data: {
           vehicleId: vehicle.id,
           reason: blacklistCheck.reason,
-          blacklistType: blacklistCheck.blacklistType as any,
+          blacklistType: blacklistCheck.blacklistType as BlacklistType,
           startDate: new Date(),
           endDate,
           addedBy: user.id,
@@ -235,7 +236,7 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 201 });
   } catch (err) {
-    console.error('Create violation error:', err);
+    logger.error('Create violation error:', err);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

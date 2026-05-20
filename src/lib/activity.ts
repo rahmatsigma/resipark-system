@@ -1,5 +1,6 @@
 import { db } from './db';
 import { headers } from 'next/headers';
+import { logger } from './logger';
 
 export interface ActivityLogData {
   userId?: string | null;
@@ -27,7 +28,7 @@ export async function logActivity(data: ActivityLogData): Promise<void> {
       }
     });
   } catch (error) {
-    console.error('Failed to log activity:', error);
+    logger.error('Failed to log activity:', error);
   }
 }
 

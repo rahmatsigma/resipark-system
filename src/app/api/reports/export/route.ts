@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
 import { PDFDocument, rgb } from 'pdf-lib';
 
 function toISODate(input: string) {
@@ -23,8 +23,8 @@ function formatDateTime(d: string | Date) {
   }).format(date);
 }
 
-function buildCSV(rows: Record<string, any>[], columns: { key: string; label: string }[]) {
-  const escape = (v: any) => {
+function buildCSV(rows: Record<string, unknown>[], columns: { key: string; label: string }[]) {
+  const escape = (v: unknown) => {
     const str = v === null || v === undefined ? '' : String(v);
     if (/[\n\r",]/.test(str)) {
       return `"${str.replace(/"/g, '""')}"`;
@@ -71,8 +71,8 @@ export async function GET(request: NextRequest) {
 
     // We only need full mapping for each report type.
     let title = '';
-    let period = `${from} s/d ${to}`;
-    let rows: any[] = [];
+    const period = `${from} s/d ${to}`;
+    let rows: Record<string, string | number | Date | null | undefined>[] = [];
     let columns: { key: string; label: string }[] = [];
 
     switch (type) {
@@ -188,10 +188,11 @@ export async function GET(request: NextRequest) {
 
     if (format === 'csv') {
       const csvRows = rows.map((r) => {
-        const out: Record<string, any> = { ...r };
+        const out: Record<string, unknown> = { ...r };
         // normalize date fields for nicer CSV
         for (const col of columns) {
-          if (out[col.key] instanceof Date) out[col.key] = formatDateTime(out[col.key]);
+          const value = out[col.key];
+          if (value instanceof Date) out[col.key] = formatDateTime(value);
         }
         return out;
       });
@@ -219,13 +220,14 @@ export async function GET(request: NextRequest) {
     try {
       const pdfFilename = `${filename}.pdf`;
       return await generatePDF(title, period, generatedAt, rows, columns, pdfFilename);
-    } catch (pdfError: any) {
+    } catch (pdfError) {
       // Jika PDF generation tetap gagal, fallback ke CSV sebagai backup
-      console.warn('PDF generation failed, fallback to CSV:', pdfError.message);
+      logger.warn('PDF generation failed, fallback to CSV:', pdfError instanceof Error ? pdfError.message : String(pdfError));
       const csvRows = rows.map((r) => {
-        const out: Record<string, any> = { ...r };
+        const out: Record<string, unknown> = { ...r };
         for (const col of columns) {
-          if (out[col.key] instanceof Date) out[col.key] = formatDateTime(out[col.key]);
+          const value = out[col.key];
+          if (value instanceof Date) out[col.key] = formatDateTime(value);
         }
         return out;
       });
@@ -244,7 +246,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : '';
-    console.error('Export report error:', {
+    logger.error('Export report error:', {
       message: errorMessage,
       stack: errorStack,
       params: searchParams ? { type: searchParams.get('type'), from: searchParams.get('from'), to: searchParams.get('to'), format: searchParams.get('format') } : 'Unable to parse params',
@@ -263,7 +265,7 @@ async function generatePDF(
   title: string,
   period: string,
   generatedAt: string,
-  rows: any[],
+  rows: Record<string, unknown>[],
   columns: { key: string; label: string }[],
   filename: string,
 ): Promise<NextResponse> {
@@ -337,7 +339,7 @@ async function generatePDF(
   rows.slice(0, maxRows).forEach((r) => {
     xOffset = 40;
     columns.forEach((col) => {
-      const v = (r as any)[col.key];
+      const v = (r as Record<string, unknown>)[col.key];
       let cellText = '';
 
       if (v instanceof Date) {
@@ -363,7 +365,7 @@ async function generatePDF(
 
     // Add new page if running out of space
     if (yOffset < 40 && rows.indexOf(r) < rows.length - 1) {
-      const newPage = pdfDoc.addPage([595, 842]);
+      pdfDoc.addPage([595, 842]);
       yOffset = 800;
       page.drawText(`${title} (continued)`, {
         x: 40,

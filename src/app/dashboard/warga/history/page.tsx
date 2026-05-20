@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -51,7 +52,7 @@ export default function WargaHistoryPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -65,16 +66,16 @@ export default function WargaHistoryPage() {
       if (data.success) {
         setRecords(data.data || []);
       }
-    } catch (err) {
-      console.error('Failed to fetch records:', err);
+    } catch (error) {
+      logger.error('Failed to fetch records:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, statusFilter]);
 
-  useState(() => {
+  useEffect(() => {
     fetchRecords();
-  });
+  }, [fetchRecords]);
 
   return (
     <div className="space-y-6">

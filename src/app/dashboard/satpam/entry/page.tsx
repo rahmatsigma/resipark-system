@@ -18,16 +18,34 @@ import {
 } from 'lucide-react';
 import { VEHICLE_CATEGORY_LABELS } from '@/lib/utils';
 
+interface EntrySuccessData {
+  vehicle: {
+    platNumber: string;
+    category: keyof typeof VEHICLE_CATEGORY_LABELS;
+    brand: string;
+    color: string;
+    house?: {
+      block: string;
+      houseNumber: string;
+    } | null;
+  };
+  slot: {
+    slotNumber?: string | null;
+  };
+}
+
+interface EntryResult {
+  success: boolean;
+  data?: EntrySuccessData | null;
+  error?: string;
+  isBlacklisted?: boolean;
+  isGuest?: boolean;
+}
+
 export default function EntryPage() {
   const [platNumber, setPlatNumber] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{
-    success: boolean;
-    data?: any;
-    error?: string;
-    isBlacklisted?: boolean;
-    isGuest?: boolean;
-  } | null>(null);
+  const [result, setResult] = useState<EntryResult | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +68,7 @@ export default function EntryPage() {
         isBlacklisted: data.error?.code === 'VEHICLE_BLACKLISTED',
         isGuest: data.error?.isGuest,
       });
-    } catch (err) {
+    } catch {
       setResult({
         success: false,
         error: 'Terjadi kesalahan sistem',

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { checkVehicleQuota, validatePlatNumber } from '@/lib/rules';
+import { logger } from '@/lib/logger';
 
 // GET - Get vehicle by ID
 export async function GET(
@@ -50,7 +51,7 @@ export async function GET(
       data: vehicle,
     });
   } catch (error) {
-    console.error('Get vehicle error:', error);
+    logger.error('Get vehicle error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -96,7 +97,7 @@ export async function PUT(
       }, { status: 403 });
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, string | null | undefined> = {};
     
     // Fields that can be updated by WARGA
     if (vehicleType) updateData.vehicleType = vehicleType;
@@ -180,7 +181,7 @@ export async function PUT(
       data: vehicle,
     });
   } catch (error) {
-    console.error('Update vehicle error:', error);
+    logger.error('Update vehicle error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -273,7 +274,7 @@ export async function DELETE(
       });
     }
   } catch (error) {
-    console.error('Delete vehicle error:', error);
+    logger.error('Delete vehicle error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

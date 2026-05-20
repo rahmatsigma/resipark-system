@@ -28,12 +28,30 @@ interface Report {
   title: string;
   period: string;
   generatedAt: string;
-  data: any[];
+  data: ReportItem[];
   summary: {
     total: number;
     amount: number;
   };
 }
+
+type ReportItem = Record<string, string | number | Date | null | undefined>;
+
+const asText = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return '-';
+  return String(value);
+};
+
+const asNumber = (value: unknown) => {
+  if (typeof value === 'number') return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const asDate = (value: unknown) => {
+  if (value instanceof Date) return value;
+  return new Date(String(value));
+};
 
 export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
@@ -267,45 +285,45 @@ export default function ReportsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    report.data.map((item: any, index: number) => (
+                    report.data.map((item: ReportItem, index: number) => (
                       <TableRow key={index}>
                         <TableCell>{index + 1}</TableCell>
                         {reportType === 'access' && (
                           <>
-                            <TableCell>{formatDateTime(item.entryTime)}</TableCell>
-                            <TableCell className="font-mono">{item.platNumber}</TableCell>
-                            <TableCell>{item.category}</TableCell>
-                            <TableCell>{item.duration || '-'}</TableCell>
+                            <TableCell>{formatDateTime(asDate(item.entryTime))}</TableCell>
+                            <TableCell className="font-mono">{asText(item.platNumber)}</TableCell>
+                            <TableCell>{asText(item.category)}</TableCell>
+                            <TableCell>{asText(item.duration)}</TableCell>
                           </>
                         )}
                         {reportType === 'violations' && (
                           <>
-                            <TableCell>{formatDateTime(item.violationDate)}</TableCell>
-                            <TableCell className="font-mono">{item.platNumber}</TableCell>
-                            <TableCell>{item.violationType}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.totalFine)}</TableCell>
+                            <TableCell>{formatDateTime(asDate(item.violationDate))}</TableCell>
+                            <TableCell className="font-mono">{asText(item.platNumber)}</TableCell>
+                            <TableCell>{asText(item.violationType)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(asNumber(item.totalFine))}</TableCell>
                             <TableCell>
                               <Badge variant={item.status === 'PAID' ? 'default' : 'secondary'}>
-                                {item.status}
+                                {asText(item.status)}
                               </Badge>
                             </TableCell>
                           </>
                         )}
                         {reportType === 'revenue' && (
                           <>
-                            <TableCell>{formatDateTime(item.date)}</TableCell>
-                            <TableCell>{item.source}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
+                            <TableCell>{formatDateTime(asDate(item.date))}</TableCell>
+                            <TableCell>{asText(item.source)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(asNumber(item.amount))}</TableCell>
                           </>
                         )}
                         {reportType === 'blacklist' && (
                           <>
-                            <TableCell className="font-mono">{item.platNumber}</TableCell>
-                            <TableCell>{item.reason}</TableCell>
-                            <TableCell>{item.blacklistType}</TableCell>
+                            <TableCell className="font-mono">{asText(item.platNumber)}</TableCell>
+                            <TableCell>{asText(item.reason)}</TableCell>
+                            <TableCell>{asText(item.blacklistType)}</TableCell>
                             <TableCell>
                               <Badge variant={item.status === 'ACTIVE' ? 'destructive' : 'secondary'}>
-                                {item.status}
+                                {asText(item.status)}
                               </Badge>
                             </TableCell>
                           </>

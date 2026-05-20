@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,7 +113,7 @@ export default function VehiclesPage() {
     houseId: '',
   });
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -130,28 +131,28 @@ export default function VehiclesPage() {
         setTotalPages(data.pagination.totalPages);
       }
     } catch (err) {
-      console.error('Failed to fetch vehicles:', err);
+      logger.error('Failed to fetch vehicles:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, categoryFilter, statusFilter]);
 
-  const fetchHouses = async () => {
+  const fetchHouses = useCallback(async () => {
     try {
       const response = await fetch('/api/houses');
       const data = await response.json();
       if (data.success) {
         setHouses(data.data);
       }
-    } catch (err) {
-      console.error('Failed to fetch houses:', err);
+    } catch (error) {
+      logger.error('Failed to fetch houses:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchVehicles();
     fetchHouses();
-  }, [page, search, categoryFilter, statusFilter]);
+  }, [fetchVehicles, fetchHouses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,7 +192,7 @@ export default function VehiclesPage() {
       } else {
         setError(data.error?.message || 'Gagal mendaftarkan kendaraan');
       }
-    } catch (err) {
+    } catch {
       setError('Terjadi kesalahan sistem');
     } finally {
       setSaving(false);
@@ -241,7 +242,7 @@ export default function VehiclesPage() {
       } else {
         setError(data.error?.message || 'Gagal mengupdate kendaraan');
       }
-    } catch (err) {
+    } catch {
       setError('Terjadi kesalahan sistem');
     } finally {
       setSaving(false);
@@ -265,7 +266,7 @@ export default function VehiclesPage() {
       } else {
         alert(data.error?.message || 'Gagal menghapus kendaraan');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     }
   };
@@ -288,7 +289,7 @@ export default function VehiclesPage() {
       } else {
         alert(data.error?.message || 'Gagal menghapus kendaraan');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     }
   };

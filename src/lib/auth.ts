@@ -1,4 +1,5 @@
-import { db, User, UserRole } from './db';
+import { db, UserRole } from './db';
+import { logger } from './logger';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { nanoid } from 'nanoid';
@@ -201,7 +202,7 @@ export async function login(username: string, password: string): Promise<{ succe
       }
     };
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     return { success: false, error: 'Terjadi kesalahan sistem' };
   }
 }
@@ -225,6 +226,6 @@ export async function logout(): Promise<void> {
     
     await clearSessionCookie();
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error:', error);
   }
 }

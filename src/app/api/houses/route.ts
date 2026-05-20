@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 
 export async function GET(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       data: houses,
     });
   } catch (error) {
-    console.error('Get houses error:', error);
+    logger.error('Get houses error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
       message: 'Rumah berhasil ditambahkan',
     }, { status: 201 });
   } catch (error) {
-    console.error('Create house error:', error);
+    logger.error('Create house error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }

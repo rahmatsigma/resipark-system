@@ -1,0 +1,454 @@
+C:\Users\Farouq\Documents\4. Matkul Smt 4\Rekayasa Perangkat Lunak\ProjectRPL\resipark-system>node_modules\.bin\tsc --noEmit
+src/app/api/dashboard/charts/route.ts:52:22 - error TS2345: Argument of type '{ date: string; entries: number; exits: number; }' is not assignable to parameter of type 'never'.
+
+ 52       chartData.push({
+                         ~
+ 53         date: date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+ 55         exits,
+    ~~~~~~~~~~~~~~
+ 56       });
+    ~~~~~~~
+
+src/app/api/guests/route.ts:46:37 - error TS2304: Cannot find name 'NextRequest'.
+
+46 export async function POST(request: NextRequest) {
+                                       ~~~~~~~~~~~
+
+src/app/api/guests/route.ts:128:7 - error TS2322: Type 'string | undefined' is not assignable to type 'null'.
+  Type 'undefined' is not assignable to type 'null'.
+
+128       slotNumber = slot?.slotNumber;
+          ~~~~~~~~~~
+
+src/app/dashboard/admin/reports/page.tsx:282:62 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+282                             <TableCell className="font-mono">{item.platNumber}</TableCell>
+                                                                 ~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:283:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+283                             <TableCell>{item.category}</TableCell>
+                                           ~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:290:62 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+290                             <TableCell className="font-mono">{item.platNumber}</TableCell>
+                                                                 ~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:291:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+291                             <TableCell>{item.violationType}</TableCell>
+                                           ~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:293:47 - error TS2345: Argument of type 'string | number | Date | null | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+
+293                               {formatCurrency(item.totalFine)}
+                                                  ~~~~~~~~~~~~~~
+
+src/app/dashboard/admin/reports/page.tsx:297:33 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+297                                 {item.status}
+                                    ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & VariantProps<...> & { ...; }'
+
+src/app/dashboard/admin/reports/page.tsx:305:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+305                             <TableCell>{item.source}</TableCell>
+                                           ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:307:47 - error TS2345: Argument of type 'string | number | Date | null | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+
+307                               {formatCurrency(item.amount)}
+                                                  ~~~~~~~~~~~
+
+src/app/dashboard/admin/reports/page.tsx:313:62 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+313                             <TableCell className="font-mono">{item.platNumber}</TableCell>
+                                                                 ~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:314:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+314                             <TableCell>{item.reason}</TableCell>
+                                           ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:315:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+315                             <TableCell>{item.blacklistType}</TableCell>
+                                           ~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/admin/reports/page.tsx:318:33 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+318                                 {item.status}
+                                    ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & VariantProps<...> & { ...; }'
+
+src/app/dashboard/admin/users/page.tsx:212:16 - error TS2790: The operand of a 'delete' operator must be optional.
+
+212         delete submitData.password;
+                   ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/pengelola/reports/page.tsx:278:62 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+278                             <TableCell className="font-mono">{item.platNumber}</TableCell>
+                                                                 ~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:279:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+279                             <TableCell>{item.category}</TableCell>
+                                           ~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:280:40 - error TS2322: Type 'string | number | Date' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+280                             <TableCell>{item.duration || '-'}</TableCell>
+                                           ~~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:286:62 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+286                             <TableCell className="font-mono">{item.platNumber}</TableCell>
+                                                                 ~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:287:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+287                             <TableCell>{item.violationType}</TableCell>
+                                           ~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:288:79 - error TS2345: Argument of type 'string | number | Date | null | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+
+288                             <TableCell className="text-right">{formatCurrency(item.totalFine)}</TableCell>
+                                                                                  ~~~~~~~~~~~~~~
+
+src/app/dashboard/pengelola/reports/page.tsx:291:33 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+291                                 {item.status}
+                                    ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & VariantProps<...> & { ...; }'
+
+src/app/dashboard/pengelola/reports/page.tsx:299:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+299                             <TableCell>{item.source}</TableCell>
+                                           ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:300:79 - error TS2345: Argument of type 'string | number | Date | null | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+
+300                             <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
+                                                                                  ~~~~~~~~~~~
+
+src/app/dashboard/pengelola/reports/page.tsx:305:62 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+305                             <TableCell className="font-mono">{item.platNumber}</TableCell>
+                                                                 ~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:306:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+306                             <TableCell>{item.reason}</TableCell>
+                                           ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:307:40 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+307                             <TableCell>{item.blacklistType}</TableCell>
+                                           ~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLTableDataCellElement> & TdHTMLAttributes<HTMLTableDataCellElement>'
+
+src/app/dashboard/pengelola/reports/page.tsx:310:33 - error TS2322: Type 'string | number | Date | null | undefined' is not assignable to type 'ReactNode'.
+  Type 'Date' is not assignable to type 'ReactNode'.
+
+310                                 {item.status}
+                                    ~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'IntrinsicAttributes & ClassAttributes<HTMLSpanElement> & HTMLAttributes<HTMLSpanElement> & VariantProps<...> & { ...; }'
+
+src/app/dashboard/satpam/entry/page.tsx:158:71 - error TS18046: 'result.data.vehicle' is of type 'unknown'.
+
+158                           <p className="text-xl font-bold font-mono">{result.data.vehicle.platNumber}</p>
+                                                                          ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/entry/page.tsx:163:54 - error TS18046: 'result.data.vehicle' is of type 'unknown'.
+
+163                             {VEHICLE_CATEGORY_LABELS[result.data.vehicle.category]}
+                                                         ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/entry/page.tsx:171:55 - error TS18046: 'result.data.vehicle' is of type 'unknown'.
+
+171                           <p className="font-medium">{result.data.vehicle.brand} - {result.data.vehicle.color}</p>
+                                                          ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/entry/page.tsx:171:85 - error TS18046: 'result.data.vehicle' is of type 'unknown'.
+
+171                           <p className="font-medium">{result.data.vehicle.brand} - {result.data.vehicle.color}</p>
+                                                                                        ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/entry/page.tsx:175:61 - error TS18046: 'result.data.slot' is of type 'unknown'.
+
+175                           <p className="font-bold text-lg">{result.data.slot.slotNumber || 'Otomatis'}</p>
+                                                                ~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/entry/page.tsx:179:24 - error TS18046: 'result.data.vehicle' is of type 'unknown'.
+
+179                       {result.data.vehicle.house && (
+                           ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/entry/page.tsx:183:30 - error TS18046: 'result.data.vehicle' is of type 'unknown'.
+
+183                             {result.data.vehicle.house.block}-{result.data.vehicle.house.houseNumber}
+                                 ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/entry/page.tsx:183:64 - error TS18046: 'result.data.vehicle' is of type 'unknown'.
+
+183                             {result.data.vehicle.house.block}-{result.data.vehicle.house.houseNumber}
+                                                                   ~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/exit/page.tsx:140:70 - error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+
+140                           <p className="text-xl font-bold font-mono">{result.data.platNumber}</p>
+                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2267:9
+    2267         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'DetailedHTMLProps<HTMLAttributes<HTMLParagraphElement>, HTMLParagraphElement>'
+
+src/app/dashboard/satpam/exit/page.tsx:144:76 - error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'number'.
+
+144                           <p className="text-xl font-bold">{formatDuration(result.data.duration)}</p>
+                                                                               ~~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/exit/page.tsx:151:64 - error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'string | number'.
+
+151                           <p className="font-medium">{new Date(result.data.entryTime).toLocaleString('id-ID')}</p>
+                                                                   ~~~~~~~~~~~~~~~~~~~~~
+
+
+src/app/dashboard/satpam/exit/page.tsx:155:64 - error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'string | number'.
+
+155                           <p className="font-medium">{new Date(result.data.exitTime).toLocaleString('id-ID')}</p>
+                                                                   ~~~~~~~~~~~~~~~~~~~~
+
+
+src/app/dashboard/satpam/exit/page.tsx:159:23 - error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+
+159                       {/* Fine Information */}
+                          ~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/app/dashboard/satpam/exit/page.tsx:167:66 - error TS2339: Property 'amount' does not exist on type '{}'.
+
+167                                 {formatCurrency(result.data.fine.amount)}
+                                                                     ~~~~~~
+
+src/app/dashboard/satpam/exit/page.tsx:169:77 - error TS2339: Property 'reason' does not exist on type '{}'.
+
+169                               <p className="text-sm mt-1">{result.data.fine.reason}</p>
+                                                                                ~~~~~~
+
+src/app/dashboard/warga/violations/page.tsx:140:43 - error TS2304: Cannot find name 'getStatusColor'.
+
+140                         <Badge className={getStatusColor(violation.status)}>
+                                              ~~~~~~~~~~~~~~
+
+src/hooks/use-toast.ts:32:22 - error TS2339: Property 'ADD_TOAST' does not exist on type 'ActionType'.
+
+32     type: ActionType["ADD_TOAST"]
+                        ~~~~~~~~~~~
+
+src/hooks/use-toast.ts:36:22 - error TS2339: Property 'UPDATE_TOAST' does not exist on type 'ActionType'.
+
+36     type: ActionType["UPDATE_TOAST"]
+                        ~~~~~~~~~~~~~~
+
+src/hooks/use-toast.ts:40:22 - error TS2339: Property 'DISMISS_TOAST' does not exist on type 'ActionType'.
+
+40     type: ActionType["DISMISS_TOAST"]
+                        ~~~~~~~~~~~~~~~
+
+src/hooks/use-toast.ts:44:22 - error TS2339: Property 'REMOVE_TOAST' does not exist on type 'ActionType'.
+
+44     type: ActionType["REMOVE_TOAST"]
+                        ~~~~~~~~~~~~~~
+
+src/hooks/use-toast.ts:70:56 - error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+
+70 export const reducer = (state: State, action: Action): State => {
+                                                          ~~~~~
+
+src/hooks/use-toast.ts:75:25 - error TS2339: Property 'toast' does not exist on type 'Action'.
+  Property 'toast' does not exist on type '{ type: any; toastId?: string | undefined; }'.
+
+75         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+                           ~~~~~
+
+src/hooks/use-toast.ts:82:27 - error TS2339: Property 'toast' does not exist on type 'Action'.
+  Property 'toast' does not exist on type '{ type: any; toastId?: string | undefined; }'.
+
+82           t.id === action.toast.id ? { ...t, ...action.toast } : t
+                             ~~~~~
+
+src/hooks/use-toast.ts:82:56 - error TS2339: Property 'toast' does not exist on type 'Action'.
+  Property 'toast' does not exist on type '{ type: any; toastId?: string | undefined; }'.
+
+82           t.id === action.toast.id ? { ...t, ...action.toast } : t
+                                                          ~~~~~
+
+src/hooks/use-toast.ts:87:15 - error TS2339: Property 'toastId' does not exist on type 'Action'.
+
+87       const { toastId } = action
+                 ~~~~~~~
+
+src/hooks/use-toast.ts:112:18 - error TS2339: Property 'toastId' does not exist on type 'Action'.
+  Property 'toastId' does not exist on type '{ type: any; toast: ToasterToast; }'.
+
+112       if (action.toastId === undefined) {
+                     ~~~~~~~
+
+src/hooks/use-toast.ts:120:60 - error TS2339: Property 'toastId' does not exist on type 'Action'.
+  Property 'toastId' does not exist on type '{ type: any; toast: ToasterToast; }'.
+
+120         toasts: state.toasts.filter((t) => t.id !== action.toastId),
+                                                               ~~~~~~~
+
+
+Found 56 errors in 9 files.
+
+Errors  Files
+     1  src/app/api/dashboard/charts/route.ts:52
+     2  src/app/api/guests/route.ts:46
+    12  src/app/dashboard/admin/reports/page.tsx:282
+     1  src/app/dashboard/admin/users/page.tsx:212
+    13  src/app/dashboard/pengelola/reports/page.tsx:278
+     8  src/app/dashboard/satpam/entry/page.tsx:158
+     7  src/app/dashboard/satpam/exit/page.tsx:140
+     1  src/app/dashboard/warga/violations/page.tsx:140
+    11  src/hooks/use-toast.ts:32
+
+C:\Users\Farouq\Documents\4. Matkul Smt 4\Rekayasa Perangkat Lunak\ProjectRPL\resipark-system>
