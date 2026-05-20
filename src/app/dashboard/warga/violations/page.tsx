@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -12,14 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
-  AlertTriangle,
-  Loader2,
-  Clock,
-  CheckCircle,
-} from 'lucide-react';
-import { formatDateTime, formatCurrency, getStatusColor } from '@/lib/utils';
-import { VIOLATION_LABELS } from '@/lib/utils';
+import { AlertTriangle, Loader2, CheckCircle } from 'lucide-react';
+import { formatDateTime, formatCurrency } from '@/lib/utils';
+import { logger } from '@/lib/logger';
+import { VIOLATION_LABELS, getStatusColor } from '@/lib/utils';
 
 interface Violation {
   id: string;
@@ -49,16 +44,16 @@ export default function WargaViolationsPage() {
       if (data.success) {
         setViolations(data.data || []);
       }
-    } catch (err) {
-      console.error('Failed to fetch violations:', err);
+    } catch (error) {
+      logger.error('Failed to fetch violations:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     fetchViolations();
-  });
+  }, []);
 
   const totalUnpaid = violations
     .filter(v => v.status === 'PENDING')

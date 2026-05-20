@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import type { HouseWithResidents } from '@/types';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ export default function RegisterPage() {
         setHouses(data.data as HouseWithResidents[]);
       }
     } catch {
-      console.error('Failed to fetch houses');
+      logger.error('Failed to fetch houses');
     }
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,6 @@ import {
   Search, 
   Loader2,
   LogIn,
-  LogOut,
   Clock,
   ChevronLeft,
   ChevronRight,
@@ -64,7 +64,7 @@ export default function AdminAccessPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -80,16 +80,16 @@ export default function AdminAccessPage() {
         setRecords(data.data || []);
         setTotalPages(data.pagination?.totalPages || 1);
       }
-    } catch (err) {
-      console.error('Failed to fetch records:', err);
+    } catch (error) {
+      logger.error('Failed to fetch records:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, statusFilter]);
 
-  useState(() => {
+  useEffect(() => {
     fetchRecords();
-  });
+  }, [fetchRecords]);
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -89,6 +90,17 @@ interface House {
   status: string;
 }
 
+interface UserFormData {
+  username: string;
+  email: string;
+  fullName: string;
+  phone: string;
+  role: string;
+  status: string;
+  password?: string;
+  houseId: string;
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [houses, setHouses] = useState<House[]>([]);
@@ -138,14 +150,14 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
     } finally {
       setAddingHouse(false);
       // Reset refs
-      blockRef.current && (blockRef.current.value = '');
-      houseNumberRef.current && (houseNumberRef.current.value = '');
-      addressRef.current && (addressRef.current.value = '');
+      if (blockRef.current) blockRef.current.value = '';
+      if (houseNumberRef.current) houseNumberRef.current.value = '';
+      if (addressRef.current) addressRef.current.value = '';
     }
   };
 
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<UserFormData>({
     username: '',
     email: '',
     fullName: '',
@@ -156,7 +168,7 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
     houseId: '',
   });
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -173,29 +185,29 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
         setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (err) {
-      console.error('Failed to fetch users:', err);
+      logger.error('Failed to fetch users:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, roleFilter]);
 
-  const fetchHouses = async () => {
+  const fetchHouses = useCallback(async () => {
     try {
       const response = await fetch('/api/houses?vacant=true');
       const data = await response.json();
       if (data.success) {
         setHouses(data.data);
       }
-    } catch (err) {
-      console.error('Failed to fetch houses:', err);
+    } catch (error) {
+      logger.error('Failed to fetch houses:', error);
     }
-  };
+  }, []);
 
 
   useEffect(() => {
     fetchUsers();
     fetchHouses();
-  }, [page, search, roleFilter]);
+  }, [fetchUsers, fetchHouses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,10 +218,10 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
       const method = editingUser ? 'PUT' : 'POST';
 
-      const submitData = { ...formData };
-      if (editingUser && !submitData.password) {
-        delete (submitData as any).password;
-      }
+      const submitData = {
+        ...formData,
+        password: editingUser && !formData.password ? undefined : formData.password,
+      };
       if (submitData.role !== 'WARGA') {
         submitData.houseId = '';
       }
@@ -231,7 +243,7 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
       } else {
         setError(data.error?.message || 'Terjadi kesalahan');
       }
-    } catch (err) {
+    } catch {
       setError('Terjadi kesalahan sistem');
     } finally {
       setSaving(false);
@@ -253,7 +265,7 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
       } else {
         alert(data.error?.message || 'Gagal menonaktifkan user');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     }
   };

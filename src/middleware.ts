@@ -39,8 +39,7 @@ export async function middleware(request: NextRequest) {
 // Hanya jalankan middleware pada path tertentu untuk efisiensi
 export const config = {
   matcher: [
-    '/api/access/:path*', 
-    '/dashboard/satpam/:path*', 
+    '/api/access/:path*',  
     '/api/logs/:path*' // Tambahkan path logs ke matcher agar middleware ini tereksekusi
   ],
 };

@@ -6,26 +6,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { 
   LogOut, 
-  AlertTriangle, 
   CheckCircle, 
   XCircle, 
   Loader2,
-  Clock,
   CreditCard,
 } from 'lucide-react';
 import { formatDuration, formatCurrency } from '@/lib/utils';
 
+interface ExitFineData {
+  amount: number;
+  reason: string;
+}
+
+interface ExitSuccessData {
+  platNumber: string;
+  duration: number;
+  entryTime: string | Date;
+  exitTime: string | Date;
+  fine?: ExitFineData | null;
+}
+
+interface ExitResult {
+  success: boolean;
+  data?: ExitSuccessData | null;
+  error?: string;
+}
+
 export default function ExitPage() {
   const [platNumber, setPlatNumber] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{
-    success: boolean;
-    data?: any;
-    error?: string;
-  } | null>(null);
+  const [result, setResult] = useState<ExitResult | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +58,7 @@ export default function ExitPage() {
         data: data.data,
         error: data.error?.message,
       });
-    } catch (err) {
+    } catch {
       setResult({
         success: false,
         error: 'Terjadi kesalahan sistem',

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import { nanoid } from 'nanoid';
+import { logger } from '@/lib/logger';
 
 // Simple in-memory token store (use Redis in production)
 const resetTokens = new Map<string, { email: string; expiresAt: Date }>();
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Dalam production, kirim email
     // Untuk demo, kita return token
-    console.log(`Reset token for ${email}: ${token}`);
+    logger.log(`Reset token for ${email}: ${token}`);
 
     return NextResponse.json({
       success: true,
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       demoToken: token,
     });
   } catch (error) {
-    console.error('Forgot password error:', error);
+    logger.error('Forgot password error:', error);
     return NextResponse.json({
       success: false,
       error: {
@@ -119,7 +120,7 @@ export async function PUT(request: NextRequest) {
       message: 'Password berhasil direset. Silakan login.',
     });
   } catch (error) {
-    console.error('Reset password error:', error);
+    logger.error('Reset password error:', error);
     return NextResponse.json({
       success: false,
       error: {

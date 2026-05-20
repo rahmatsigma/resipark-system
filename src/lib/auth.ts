@@ -1,4 +1,6 @@
-import { db, User, UserRole } from './db';
+import { db, UserRole } from './db';
+import { env } from './env';
+import { logger } from './logger';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { nanoid } from 'nanoid';
@@ -10,6 +12,42 @@ const IDLE_TIMEOUT_MINUTES = 30 * 60 * 1000; // 30 minutes in ms
 
 // Simple in-memory session store (for demo - use Redis in production)
 const sessions = new Map<string, { userId: string; expiresAt: Date; lastActivity: number }>(); // Unix timestamp
+
+async function getSessionSignature(sessionId: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(env.NEXTAUTH_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(sessionId));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function signSessionToken(sessionId: string): Promise<string> {
+  return `${sessionId}.${await getSessionSignature(sessionId)}`;
+}
+
+async function verifySessionToken(token: string): Promise<string | null> {
+  const separatorIndex = token.lastIndexOf('.');
+  if (separatorIndex <= 0) return null;
+
+  const sessionId = token.slice(0, separatorIndex);
+  const signature = token.slice(separatorIndex + 1);
+  const expectedSignature = await getSessionSignature(sessionId);
+
+  if (signature.length !== expectedSignature.length) return null;
+
+  let mismatch = 0;
+  for (let index = 0; index < signature.length; index++) {
+    mismatch |= signature.charCodeAt(index) ^ expectedSignature.charCodeAt(index);
+  }
+
+  return mismatch === 0 ? sessionId : null;
+}
 
 export interface SessionUser {
   id: string;
@@ -90,8 +128,11 @@ export async function deleteSession(sessionId: string): Promise<void> {
 export async function getCurrentUser(): Promise<SessionUser | null> {
   try {
     const cookieStore = await cookies();
-    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    const signedSession = cookieStore.get(SESSION_COOKIE_NAME)?.value;
     
+    if (!signedSession) return null;
+
+    const sessionId = await verifySessionToken(signedSession);
     if (!sessionId) return null;
     
     const session = await getSession(sessionId);
@@ -127,8 +168,9 @@ export async function setSessionCookie(sessionId: string): Promise<void> {
   const cookieStore = await cookies();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRY_DAYS);
+  const signedSession = await signSessionToken(sessionId);
   
-  cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
+  cookieStore.set(SESSION_COOKIE_NAME, signedSession, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -201,7 +243,7 @@ export async function login(username: string, password: string): Promise<{ succe
       }
     };
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     return { success: false, error: 'Terjadi kesalahan sistem' };
   }
 }
@@ -217,7 +259,8 @@ export function updateActivity(sessionId: string): void {
 export async function logout(): Promise<void> {
   try {
     const cookieStore = await cookies();
-    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    const signedSession = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    const sessionId = signedSession ? await verifySessionToken(signedSession) : null;
     
     if (sessionId) {
       await deleteSession(sessionId);
@@ -225,6 +268,6 @@ export async function logout(): Promise<void> {
     
     await clearSessionCookie();
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error:', error);
   }
 }

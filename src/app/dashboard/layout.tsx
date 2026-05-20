@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { useRouter, usePathname } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+// Button intentionally removed - not used in layout
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -37,9 +38,7 @@ import {
   AlertTriangle,
   Ban,
   FileText,
-  Settings,
   ChevronUp,
-  Menu,
 } from 'lucide-react';
 import { ROLE_LABELS, getInitials, getAvatarColor } from '@/lib/utils';
 
@@ -112,14 +111,16 @@ export default function DashboardLayout({
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
         if (response.ok) {
           const data = await response.json();
           setUser(data.data);
         } else {
           router.push('/');
         }
-      } catch (error) {
+      } catch {
         router.push('/');
       } finally {
         setLoading(false);
@@ -136,8 +137,8 @@ export default function DashboardLayout({
         method: 'POST',
         credentials: 'include'
       });
-    } catch (error) {
-      console.log('Activity update failed (possibly logged out)');
+    } catch {
+      logger.warn('Activity update failed (possibly logged out)');
     }
   }, []);
 
@@ -170,7 +171,7 @@ export default function DashboardLayout({
       await fetch('/api/auth/logout', { method: 'POST' });
       router.push('/');
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

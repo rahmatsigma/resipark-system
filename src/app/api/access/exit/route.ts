@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
-import { calculateOvertimeFine, FINE_RULES } from '@/lib/rules';
+import { logger } from '@/lib/logger';
+import { calculateOvertimeFine } from '@/lib/rules';
 import type { ViolationWithDetails } from '@/types';
 
 // POST - Record vehicle exit
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Access exit error:', error);
+    logger.error('Access exit error:', error);
     return NextResponse.json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
