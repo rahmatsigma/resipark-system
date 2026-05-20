@@ -2,17 +2,7 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -21,22 +11,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { 
-  FileText,
-  Download,
-  Loader2,
-  Filter,
-  Calendar,
-  TrendingUp,
-} from 'lucide-react';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { FileText, Download, Loader2, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 interface Report {
@@ -57,6 +41,8 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [report, setReport] = useState<Report | null>(null);
+
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
 
   const generateReport = async () => {
     if (!dateFrom || !dateTo) {
@@ -79,37 +65,41 @@ export default function ReportsPage() {
       } else {
         alert('Gagal generate laporan');
       }
-    } catch (err) {
+    } catch {
       alert('Terjadi kesalahan sistem');
     } finally {
       setLoading(false);
     }
   };
 
-  const exportPDF = () => {
+  const handleExport = async () => {
     if (!report) return;
 
-    // Generate simple text report
-    let content = `LAPORAN ${report.title.toUpperCase()}\n`;
-    content += `Periode: ${report.period}\n`;
-    content += `Generated: ${report.generatedAt}\n\n`;
-    content += `Ringkasan:\n`;
-    content += `- Total: ${report.summary.total}\n`;
-    content += `- Total Nominal: ${formatCurrency(report.summary.amount)}\n\n`;
-    content += `Detail:\n`;
+    try {
+      const params = new URLSearchParams();
+      params.set('type', reportType);
+      params.set('from', dateFrom);
+      params.set('to', dateTo);
+      params.set('format', exportFormat);
 
-    report.data.forEach((item: any, index: number) => {
-      content += `${index + 1}. ${item.description || item.platNumber || item.date}\n`;
-    });
+      const response = await fetch(`/api/reports/export?${params.toString()}`);
 
-    // Create download
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `laporan-${reportType}-${dateFrom}-${dateTo}.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        alert(err?.error?.message || 'Gagal export laporan');
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `laporan-${reportType}-${dateFrom}-${dateTo}.${exportFormat}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert('Terjadi kesalahan sistem');
+    }
   };
 
   return (
@@ -120,14 +110,12 @@ export default function ReportsPage() {
             <FileText className="h-5 w-5" />
             Generate Laporan
           </CardTitle>
-          <CardDescription>
-            Buat laporan berdasarkan periode tertentu
-          </CardDescription>
+          <CardDescription>Buat laporan berdasarkan periode tertentu</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2">
-              <Label>Jenis Laporan</Label>
+              <label className="text-sm font-medium">Jenis Laporan</label>
               <Select value={reportType} onValueChange={setReportType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih jenis" />
@@ -142,7 +130,7 @@ export default function ReportsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Tanggal Mulai</Label>
+              <label className="text-sm font-medium">Tanggal Mulai</label>
               <Input
                 type="date"
                 value={dateFrom}
@@ -151,7 +139,7 @@ export default function ReportsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Tanggal Selesai</Label>
+              <label className="text-sm font-medium">Tanggal Selesai</label>
               <Input
                 type="date"
                 value={dateTo}
@@ -182,25 +170,40 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Report Result */}
       {report && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <CardTitle>{report.title}</CardTitle>
-                <CardDescription>
-                  Periode: {report.period}
-                </CardDescription>
+                <CardDescription>Periode: {report.period}</CardDescription>
               </div>
-              <Button variant="outline" onClick={exportPDF}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
+
+              <div className="flex items-center gap-3">
+                <div className="w-40">
+                  <Select
+                    value={exportFormat}
+                    onValueChange={(v) => setExportFormat(v as 'csv' | 'pdf')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="csv">CSV</SelectItem>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button variant="outline" onClick={handleExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </div>
             </div>
           </CardHeader>
+
           <CardContent>
-            {/* Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
                 <div className="text-sm text-muted-foreground">Total Record</div>
@@ -211,10 +214,6 @@ export default function ReportsPage() {
                 <div className="text-2xl font-bold">{formatCurrency(report.summary.amount)}</div>
               </div>
               <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg">
-                <div className="text-sm text-muted-foreground">Jenis Laporan</div>
-                <div className="text-lg font-medium capitalize">{reportType}</div>
-              </div>
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <div className="text-sm text-muted-foreground">Generated</div>
                 <div className="text-sm">{formatDateTime(report.generatedAt)}</div>
               </div>

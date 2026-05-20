@@ -21,12 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  FileText,
-  Download,
-  Loader2,
-  TrendingUp,
-} from 'lucide-react';
+import { FileText, Download, Loader2, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 interface Report {
@@ -47,6 +42,8 @@ export default function AdminReportsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [report, setReport] = useState<Report | null>(null);
+
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
 
   const generateReport = async () => {
     if (!dateFrom || !dateTo) {
@@ -76,28 +73,34 @@ export default function AdminReportsPage() {
     }
   };
 
-  const exportPDF = () => {
+  const handleExport = async () => {
     if (!report) return;
 
-    let content = `LAPORAN ${report.title.toUpperCase()}\n`;
-    content += `Periode: ${report.period}\n`;
-    content += `Generated: ${report.generatedAt}\n\n`;
-    content += `Ringkasan:\n`;
-    content += `- Total: ${report.summary.total}\n`;
-    content += `- Total Nominal: ${formatCurrency(report.summary.amount)}\n\n`;
-    content += `Detail:\n`;
+    try {
+      const params = new URLSearchParams();
+      params.set('type', reportType);
+      params.set('from', dateFrom);
+      params.set('to', dateTo);
+      params.set('format', exportFormat);
 
-    report.data.forEach((item: any, index: number) => {
-      content += `${index + 1}. ${item.description || item.platNumber || item.date}\n`;
-    });
+      const response = await fetch(`/api/reports/export?${params.toString()}`);
 
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `laporan-${reportType}-${dateFrom}-${dateTo}.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        alert(err?.error?.message || 'Gagal export laporan');
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `laporan-${reportType}-${dateFrom}-${dateTo}.${exportFormat}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert('Terjadi kesalahan sistem');
+    }
   };
 
   return (
@@ -108,9 +111,7 @@ export default function AdminReportsPage() {
             <FileText className="h-5 w-5" />
             Generate Laporan
           </CardTitle>
-          <CardDescription>
-            Buat laporan berdasarkan periode tertentu
-          </CardDescription>
+          <CardDescription>Buat laporan berdasarkan periode tertentu</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
@@ -173,19 +174,36 @@ export default function AdminReportsPage() {
       {report && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <CardTitle>{report.title}</CardTitle>
-                <CardDescription>
-                  Periode: {report.period}
-                </CardDescription>
+                <CardDescription>Periode: {report.period}</CardDescription>
               </div>
-              <Button variant="outline" onClick={exportPDF}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
+
+              <div className="flex items-center gap-3">
+                <div className="w-40">
+                  <Select
+                    value={exportFormat}
+                    onValueChange={(v) => setExportFormat(v as 'csv' | 'pdf')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="csv">CSV</SelectItem>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button variant="outline" onClick={handleExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </div>
             </div>
           </CardHeader>
+
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
@@ -269,7 +287,9 @@ export default function AdminReportsPage() {
                             <TableCell>{formatDateTime(item.violationDate)}</TableCell>
                             <TableCell className="font-mono">{item.platNumber}</TableCell>
                             <TableCell>{item.violationType}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.totalFine)}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.totalFine)}
+                            </TableCell>
                             <TableCell>
                               <Badge variant={item.status === 'PAID' ? 'default' : 'secondary'}>
                                 {item.status}
@@ -281,7 +301,9 @@ export default function AdminReportsPage() {
                           <>
                             <TableCell>{formatDateTime(item.date)}</TableCell>
                             <TableCell>{item.source}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.amount)}
+                            </TableCell>
                           </>
                         )}
                         {reportType === 'blacklist' && (
@@ -308,3 +330,4 @@ export default function AdminReportsPage() {
     </div>
   );
 }
+
