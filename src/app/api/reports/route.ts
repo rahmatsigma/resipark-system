@@ -36,6 +36,86 @@ export async function GET(request: NextRequest) {
     const period = `${from} s/d ${to}`;
 
     switch (type) {
+      case 'full': {
+        title = 'Laporan Full';
+
+        const [accessRecords, violations, payments, blacklists] = await Promise.all([
+          db.accessRecord.findMany({
+            where: { entryTime: { gte: fromDate, lte: toDate } },
+            include: { vehicle: true },
+            orderBy: { entryTime: 'desc' },
+          }),
+          db.violation.findMany({
+            where: { violationDate: { gte: fromDate, lte: toDate } },
+            include: { vehicle: true, violationType: true },
+            orderBy: { violationDate: 'desc' },
+          }),
+          db.payment.findMany({
+            where: { paidAt: { gte: fromDate, lte: toDate }, status: 'COMPLETED' },
+            include: { violation: { include: { vehicle: true } } },
+            orderBy: { paidAt: 'desc' },
+          }),
+          db.blacklist.findMany({
+            where: { createdAt: { gte: fromDate, lte: toDate } },
+            include: { vehicle: true },
+            orderBy: { createdAt: 'desc' },
+          }),
+        ]);
+
+        const accessRows = accessRecords.map((record) => ({
+          reportType: 'Akses',
+          timestamp: record.entryTime,
+          platNumber: record.vehicle.platNumber,
+          category: record.vehicle.category,
+          description: 'Kendaraan masuk',
+          amount: 0,
+          status: record.exitTime ? 'SELESAI' : 'AKTIF',
+          duration: record.exitTime
+            ? Math.floor((new Date(record.exitTime).getTime() - new Date(record.entryTime).getTime()) / 60000)
+            : null,
+        }));
+
+        const violationRows = violations.map((v) => ({
+          reportType: 'Pelanggaran',
+          timestamp: v.violationDate,
+          platNumber: v.vehicle.platNumber,
+          category: v.violationType.name,
+          description: v.violationType.name,
+          amount: v.totalFine,
+          status: v.status,
+        }));
+
+        const revenueRows = payments.map((p) => ({
+          reportType: 'Pendapatan',
+          timestamp: p.paidAt,
+          platNumber: p.violation?.vehicle?.platNumber || '-',
+          category: 'Pendapatan',
+          description: `Denda - ${p.violation?.vehicle?.platNumber || 'Unknown'}`,
+          amount: p.amount,
+          status: 'COMPLETED',
+        }));
+
+        const blacklistRows = blacklists.map((b) => ({
+          reportType: 'Blacklist',
+          timestamp: b.createdAt,
+          platNumber: b.vehicle.platNumber,
+          category: b.blacklistType,
+          description: b.reason,
+          amount: 0,
+          status: b.status,
+        }));
+
+        data = [...accessRows, ...violationRows, ...revenueRows, ...blacklistRows].sort(
+          (left, right) => new Date(String(right.timestamp)).getTime() - new Date(String(left.timestamp)).getTime(),
+        );
+
+        summary = {
+          total: data.length,
+          amount: violations.reduce((sum, v) => sum + v.totalFine, 0),
+        };
+        break;
+      }
+
       case 'access':
         title = 'Laporan Akses Kendaraan';
         const accessRecords = await db.accessRecord.findMany({

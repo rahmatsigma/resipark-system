@@ -9,8 +9,17 @@ export const SESSION_COOKIE_NAME_EXPORT = SESSION_COOKIE_NAME;
 const SESSION_EXPIRY_DAYS = 7;
 const IDLE_TIMEOUT_MINUTES = 30 * 60 * 1000; // 30 minutes in ms
 
+// Persist sessions across dev hot reloads so authenticated API calls keep working.
+const globalForSessions = globalThis as typeof globalThis & {
+  __parkirSessions?: Map<string, { userId: string; expiresAt: Date; lastActivity: number }>;
+};
+
 // Simple in-memory session store (for demo - use Redis in production)
-const sessions = new Map<string, { userId: string; expiresAt: Date; lastActivity: number }>(); // Unix timestamp
+const sessions = globalForSessions.__parkirSessions ?? new Map<string, { userId: string; expiresAt: Date; lastActivity: number }>(); // Unix timestamp
+
+if (!globalForSessions.__parkirSessions) {
+  globalForSessions.__parkirSessions = sessions;
+}
 
 export interface SessionUser {
   id: string;
