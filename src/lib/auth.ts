@@ -1,53 +1,16 @@
 import { db, UserRole } from './db';
-import { env } from './env';
 import { logger } from './logger';
+import { SESSION_COOKIE_NAME, signSessionToken, verifySessionToken } from './session';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { nanoid } from 'nanoid';
 
-const SESSION_COOKIE_NAME = 'parkir_session';
-export const SESSION_COOKIE_NAME_EXPORT = 'parkir_session'; // Export for API routes
+export const SESSION_COOKIE_NAME_EXPORT = SESSION_COOKIE_NAME;
 const SESSION_EXPIRY_DAYS = 7;
 const IDLE_TIMEOUT_MINUTES = 30 * 60 * 1000; // 30 minutes in ms
 
 // Simple in-memory session store (for demo - use Redis in production)
 const sessions = new Map<string, { userId: string; expiresAt: Date; lastActivity: number }>(); // Unix timestamp
-
-async function getSessionSignature(sessionId: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(env.NEXTAUTH_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(sessionId));
-  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-async function signSessionToken(sessionId: string): Promise<string> {
-  return `${sessionId}.${await getSessionSignature(sessionId)}`;
-}
-
-async function verifySessionToken(token: string): Promise<string | null> {
-  const separatorIndex = token.lastIndexOf('.');
-  if (separatorIndex <= 0) return null;
-
-  const sessionId = token.slice(0, separatorIndex);
-  const signature = token.slice(separatorIndex + 1);
-  const expectedSignature = await getSessionSignature(sessionId);
-
-  if (signature.length !== expectedSignature.length) return null;
-
-  let mismatch = 0;
-  for (let index = 0; index < signature.length; index++) {
-    mismatch |= signature.charCodeAt(index) ^ expectedSignature.charCodeAt(index);
-  }
-
-  return mismatch === 0 ? sessionId : null;
-}
 
 export interface SessionUser {
   id: string;
@@ -132,14 +95,14 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     
     if (!signedSession) return null;
 
-    const sessionId = await verifySessionToken(signedSession);
-    if (!sessionId) return null;
+    const token = await verifySessionToken(signedSession);
+    if (!token) return null;
     
-    const session = await getSession(sessionId);
+    const session = await getSession(token.sessionId);
     if (!session) return null;
     
     const user = await db.user.findUnique({
-      where: { id: session.userId },
+      where: { id: token.userId },
       include: {
         resident: {
           include: { house: true }
@@ -164,11 +127,16 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 }
 
 // Set session cookie
-export async function setSessionCookie(sessionId: string): Promise<void> {
+export async function setSessionCookie(sessionId: string, userId: string, role: UserRole): Promise<void> {
   const cookieStore = await cookies();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SESSION_EXPIRY_DAYS);
-  const signedSession = await signSessionToken(sessionId);
+
+  const signedSession = await signSessionToken({
+    sessionId,
+    userId,
+    role,
+  });
   
   cookieStore.set(SESSION_COOKIE_NAME, signedSession, {
     httpOnly: true,
@@ -228,7 +196,7 @@ export async function login(username: string, password: string): Promise<{ succe
     }
     
     const sessionId = await createSession(user.id);
-    await setSessionCookie(sessionId);
+    await setSessionCookie(sessionId, user.id, user.role);
     
     return {
       success: true,
@@ -260,10 +228,10 @@ export async function logout(): Promise<void> {
   try {
     const cookieStore = await cookies();
     const signedSession = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-    const sessionId = signedSession ? await verifySessionToken(signedSession) : null;
+    const token = signedSession ? await verifySessionToken(signedSession) : null;
     
-    if (sessionId) {
-      await deleteSession(sessionId);
+    if (token) {
+      await deleteSession(token.sessionId);
     }
     
     await clearSessionCookie();

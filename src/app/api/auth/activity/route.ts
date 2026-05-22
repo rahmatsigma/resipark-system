@@ -1,22 +1,30 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { updateActivity } from '@/lib/auth';
-import { SESSION_COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { updateActivity, SESSION_COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { verifySessionToken } from '@/lib/session';
 import { logger } from '@/lib/logger';
 
 export async function POST() {
   try {
     const cookieStore = await cookies();
-    const sessionId = cookieStore.get(SESSION_COOKIE_NAME_EXPORT)?.value;
+    const signedSession = cookieStore.get(SESSION_COOKIE_NAME_EXPORT)?.value;
     
-    if (!sessionId) {
+    if (!signedSession) {
       return NextResponse.json({
         success: false,
         error: { code: 'NO_SESSION', message: 'Tidak ada session' }
       }, { status: 401 });
     }
     
-    await updateActivity(sessionId);
+    const token = await verifySessionToken(signedSession);
+    if (!token) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'INVALID_SESSION', message: 'Session tidak valid' }
+      }, { status: 401 });
+    }
+
+    await updateActivity(token.sessionId);
     
     return NextResponse.json({
       success: true,
