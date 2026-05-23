@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { logger } from '@/lib/logger';
 
+const HOUR_IN_MS = 60 * 60 * 1000;
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,10 +24,10 @@ export async function PUT(
     const body = await request.json();
     const { hours } = body;
 
-    if (!hours || hours < 1) {
+    if (!Number.isInteger(hours) || hours === 0) {
       return NextResponse.json({
         success: false,
-        error: { code: 'INVALID_HOURS', message: 'Durasi perpanjangan tidak valid' }
+        error: { code: 'INVALID_HOURS', message: 'Durasi perubahan tidak valid' }
       }, { status: 400 });
     }
 
@@ -52,17 +54,19 @@ export async function PUT(
     }
 
     // Calculate new expiry time
-    const currentExpiry = guestAccess.expiredAt || new Date();
+    const currentExpiry = guestAccess.expiredAt || new Date(Date.now() + guestAccess.maxDurationHours * HOUR_IN_MS);
     const now = new Date();
-    const baseTime = currentExpiry > now ? currentExpiry : now;
-    const newExpiry = new Date(baseTime.getTime() + hours * 60 * 60 * 1000);
+    const baseTime = hours > 0 ? (currentExpiry > now ? currentExpiry : now) : currentExpiry;
+    const nextDurationHours = Math.max(1, guestAccess.maxDurationHours + hours);
+    const durationDeltaHours = nextDurationHours - guestAccess.maxDurationHours;
+    const newExpiry = new Date(baseTime.getTime() + durationDeltaHours * HOUR_IN_MS);
 
     // Update guest access
     const updated = await db.guestAccess.update({
       where: { id },
       data: {
         expiredAt: newExpiry,
-        maxDurationHours: guestAccess.maxDurationHours + hours,
+        maxDurationHours: nextDurationHours,
       },
     });
 
@@ -71,8 +75,8 @@ export async function PUT(
       userId: user.id,
       action: ACTIVITY_TYPES.GUEST_EXTEND.action,
       module: ACTIVITY_TYPES.GUEST_EXTEND.module,
-      description: `Perpanjang waktu tamu +${hours} jam`,
-      details: { guestId: id, hoursAdded: hours },
+      description: `${hours > 0 ? 'Perpanjang' : 'Kurangi'} waktu tamu ${hours > 0 ? '+' : ''}${hours} jam`,
+      details: { guestId: id, hoursChanged: hours, nextDurationHours },
     });
 
     return NextResponse.json({

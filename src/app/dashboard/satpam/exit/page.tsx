@@ -32,11 +32,18 @@ interface ExitResult {
   success: boolean;
   data?: ExitSuccessData | null;
   error?: string;
+  errorCode?: string;
+  errorDetails?: {
+    violationId?: string;
+    amount?: number;
+    reason?: string;
+  } | null;
 }
 
 export default function ExitPage() {
   const [platNumber, setPlatNumber] = useState('');
   const [loading, setLoading] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [result, setResult] = useState<ExitResult | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,6 +64,8 @@ export default function ExitPage() {
         success: data.success,
         data: data.data,
         error: data.error?.message,
+        errorCode: data.error?.code,
+        errorDetails: data.error?.details,
       });
     } catch {
       setResult({
@@ -71,6 +80,76 @@ export default function ExitPage() {
   const handleReset = () => {
     setPlatNumber('');
     setResult(null);
+  };
+
+  const handlePayFine = async () => {
+    const violationId = result?.errorDetails?.violationId;
+
+    if (!violationId) {
+      return;
+    }
+
+    setPaying(true);
+
+    try {
+      const response = await fetch(`/api/violations/${violationId}/pay`, {
+        method: 'PUT',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResult({
+          success: false,
+          error: 'Denda sudah dibayar. Silakan proses keluar ulang.',
+        });
+      } else {
+        setResult((current) => current ? {
+          ...current,
+          error: data.error?.message || 'Gagal membayar denda',
+        } : current);
+      }
+    } catch {
+      setResult((current) => current ? {
+        ...current,
+        error: 'Terjadi kesalahan sistem saat membayar denda',
+      } : current);
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const handleRetryExit = async () => {
+    if (!platNumber) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/access/exit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platNumber }),
+      });
+
+      const data = await response.json();
+
+      setResult({
+        success: data.success,
+        data: data.data,
+        error: data.error?.message,
+        errorCode: data.error?.code,
+        errorDetails: data.error?.details,
+      });
+    } catch {
+      setResult({
+        success: false,
+        error: 'Terjadi kesalahan sistem',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -141,7 +220,7 @@ export default function ExitPage() {
             <Card className="border-green-200 bg-green-50 dark:bg-green-950">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shrink-0">
                     <CheckCircle className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -202,6 +281,56 @@ export default function ExitPage() {
                   <AlertTitle>Error</AlertTitle>
                   <AlertDescription>{result.error}</AlertDescription>
                 </Alert>
+
+                {result.errorCode === 'PAYMENT_REQUIRED' && result.errorDetails?.amount && (
+                  <div className="mt-4 space-y-3">
+                    <Alert className="border-amber-200 bg-amber-50">
+                      <CreditCard className="h-4 w-4" />
+                      <AlertTitle>Denda Wajib Dibayar</AlertTitle>
+                      <AlertDescription>
+                        <div className="mt-2 space-y-1">
+                          <p className="font-bold text-lg">
+                            {formatCurrency(result.errorDetails.amount)}
+                          </p>
+                          {result.errorDetails.reason && (
+                            <p className="text-sm">{result.errorDetails.reason}</p>
+                          )}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        className="flex-1 bg-amber-500 hover:bg-amber-600"
+                        onClick={handlePayFine}
+                        disabled={paying}
+                      >
+                        {paying ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Membayar...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Bayar Denda
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handleRetryExit}
+                        disabled={loading || paying}
+                      >
+                        Proses Keluar Ulang
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

@@ -52,11 +52,50 @@ interface GuestAccess {
     houseNumber: string;
     block: string;
   };
+  expiredAt?: string | null;
+}
+
+interface HostHouse {
+  id: string;
+  houseNumber: string;
+  block: string;
+}
+
+function pad(n: number) {
+  return n.toString().padStart(2, '0');
+}
+
+function formatMs(ms: number) {
+  const abs = Math.abs(ms);
+  const hours = Math.floor(abs / (1000 * 60 * 60));
+  const mins = Math.floor((abs % (1000 * 60 * 60)) / (1000 * 60));
+  const secs = Math.floor((abs % (1000 * 60)) / 1000);
+  return `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+}
+
+function formatRemainingTime(guest: GuestAccess, now: Date) {
+  const entry = new Date(guest.accessRecord.entryTime);
+  const expiry = guest.expiredAt ? new Date(guest.expiredAt) : new Date(entry.getTime() + guest.maxDurationHours * 60 * 60 * 1000);
+  const diff = expiry.getTime() - now.getTime();
+  if (diff >= 0) return formatMs(diff);
+  return `Terlambat ${formatMs(-diff)}`;
+}
+
+function getRemainingClass(guest: GuestAccess, now: Date) {
+  const entry = new Date(guest.accessRecord.entryTime);
+  const expiry = guest.expiredAt ? new Date(guest.expiredAt) : new Date(entry.getTime() + guest.maxDurationHours * 60 * 60 * 1000);
+  const diff = expiry.getTime() - now.getTime();
+  const FIFTEEN_MIN = 15 * 60 * 1000;
+  if (diff < 0) return 'text-red-600 font-semibold';
+  if (diff <= FIFTEEN_MIN) return 'text-amber-600 font-semibold';
+  return 'text-emerald-700 font-medium';
 }
 
 export default function GuestsPage() {
   const [guests, setGuests] = useState<GuestAccess[]>([]);
+  const [houses, setHouses] = useState<HostHouse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState<Date>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -87,8 +126,25 @@ export default function GuestsPage() {
     }
   };
 
+  const fetchHouses = async () => {
+    try {
+      const res = await fetch('/api/houses');
+      const data = await res.json();
+      if (data.success) setHouses(data.data || []);
+    } catch (err) {
+      logger.error('Failed to fetch houses for host select', err);
+    }
+  };
+
   useEffect(() => {
     fetchGuests();
+    fetchHouses();
+  }, []);
+
+  // Update 'now' every second to drive countdown timers
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -245,13 +301,25 @@ export default function GuestsPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="hostHouseNumber">Tuan Rumah</Label>
-                      <Input
-                        id="hostHouseNumber"
-                        placeholder="Nomor rumah (contoh: A-01)"
+                      <Select
                         value={formData.hostHouseNumber}
-                        onChange={(e) => setFormData({ ...formData, hostHouseNumber: e.target.value })}
-                        required
-                      />
+                        onValueChange={(v) => setFormData({ ...formData, hostHouseNumber: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih tuan rumah" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {houses.length === 0 ? (
+                            <SelectItem value="">Tidak ada data</SelectItem>
+                          ) : (
+                            houses.map((h) => (
+                              <SelectItem key={h.id} value={h.houseNumber}>
+                                {h.block}-{h.houseNumber}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">
@@ -326,13 +394,54 @@ export default function GuestsPage() {
                         {guest.maxDurationHours} jam maksimal
                       </span>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Gunakan tombol plus/minus untuk simulasi durasi saat testing.
+                    </p>
                     <div className="text-sm">
                       <span className="text-muted-foreground">Masuk:</span>{' '}
                       {formatDateTime(guest.accessRecord.entryTime)}
                     </div>
-
+                    {guest.accessRecord.status === 'ACTIVE' ? (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Sisa Waktu:</span>{' '}
+                        <span className={getRemainingClass(guest, now)}>
+                          {formatRemainingTime(guest, now)}
+                        </span>
+                        {(() => {
+                          const entry = new Date(guest.accessRecord.entryTime);
+                          const expiry = guest.expiredAt ? new Date(guest.expiredAt) : new Date(entry.getTime() + guest.maxDurationHours * 60 * 60 * 1000);
+                          const diff = expiry.getTime() - now.getTime();
+                          const FIFTEEN_MIN = 15 * 60 * 1000;
+                          if (diff > 0 && diff <= FIFTEEN_MIN) {
+                            return <Badge className="ml-2 bg-amber-100 text-amber-800">Hampir Habis</Badge>;
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Keluar:</span>{' '}
+                        {guest.accessRecord.exitTime ? formatDateTime(guest.accessRecord.exitTime) : '—'}
+                      </div>
+                    )}
                     {guest.accessRecord.status === 'ACTIVE' && (
-                      <div className="flex gap-2 pt-2">
+                      <div className="grid grid-cols-2 gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                          onClick={() => handleExtend(guest.id, -2)}
+                        >
+                          -2 Jam
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                          onClick={() => handleExtend(guest.id, -4)}
+                        >
+                          -4 Jam
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
