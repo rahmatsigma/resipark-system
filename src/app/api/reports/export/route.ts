@@ -76,6 +76,86 @@ export async function GET(request: NextRequest) {
     let columns: { key: string; label: string }[] = [];
 
     switch (type) {
+      case 'full': {
+        title = 'Laporan Full';
+
+        const [accessRecords, violations, payments, blacklists] = await Promise.all([
+          db.accessRecord.findMany({
+            where: { entryTime: { gte: fromDate, lte: toDate } },
+            include: { vehicle: true },
+            orderBy: { entryTime: 'desc' },
+          }),
+          db.violation.findMany({
+            where: { violationDate: { gte: fromDate, lte: toDate } },
+            include: { vehicle: true, violationType: true },
+            orderBy: { violationDate: 'desc' },
+          }),
+          db.payment.findMany({
+            where: { paidAt: { gte: fromDate, lte: toDate }, status: 'COMPLETED' },
+            include: { violation: { include: { vehicle: true } } },
+            orderBy: { paidAt: 'desc' },
+          }),
+          db.blacklist.findMany({
+            where: { createdAt: { gte: fromDate, lte: toDate } },
+            include: { vehicle: true },
+            orderBy: { createdAt: 'desc' },
+          }),
+        ]);
+
+        rows = [
+          ...accessRecords.map((record) => ({
+            reportType: 'Akses',
+            timestamp: record.entryTime,
+            platNumber: record.vehicle.platNumber,
+            category: record.vehicle.category,
+            description: 'Kendaraan masuk',
+            amount: 0,
+            status: record.exitTime ? 'SELESAI' : 'AKTIF',
+            duration: record.exitTime
+              ? Math.floor((new Date(record.exitTime).getTime() - new Date(record.entryTime).getTime()) / 60000)
+              : null,
+          })),
+          ...violations.map((v) => ({
+            reportType: 'Pelanggaran',
+            timestamp: v.violationDate,
+            platNumber: v.vehicle.platNumber,
+            category: v.violationType.name,
+            description: v.violationType.name,
+            amount: v.totalFine,
+            status: v.status,
+          })),
+          ...payments.map((p) => ({
+            reportType: 'Pendapatan',
+            timestamp: p.paidAt,
+            platNumber: p.violation?.vehicle?.platNumber || '-',
+            category: 'Pendapatan',
+            description: `Denda - ${p.violation?.vehicle?.platNumber || 'Unknown'}`,
+            amount: p.amount,
+            status: 'COMPLETED',
+          })),
+          ...blacklists.map((b) => ({
+            reportType: 'Blacklist',
+            timestamp: b.createdAt,
+            platNumber: b.vehicle.platNumber,
+            category: b.blacklistType,
+            description: b.reason,
+            amount: 0,
+            status: b.status,
+          })),
+        ].sort((left, right) => new Date(String(right.timestamp)).getTime() - new Date(String(left.timestamp)).getTime());
+
+        columns = [
+          { key: 'reportType', label: 'Laporan' },
+          { key: 'timestamp', label: 'Waktu' },
+          { key: 'platNumber', label: 'Plat Nomor' },
+          { key: 'category', label: 'Kategori' },
+          { key: 'description', label: 'Keterangan' },
+          { key: 'amount', label: 'Nominal' },
+          { key: 'status', label: 'Status' },
+        ];
+        break;
+      }
+
       case 'access': {
         title = 'Laporan Akses Kendaraan';
         const accessRecords = await db.accessRecord.findMany({
@@ -88,10 +168,9 @@ export async function GET(request: NextRequest) {
           entryTime: record.entryTime,
           platNumber: record.vehicle.platNumber,
           category: record.vehicle.category,
-          duration:
-            record.exitTime
-              ? Math.floor((new Date(record.exitTime).getTime() - new Date(record.entryTime).getTime()) / 60000)
-              : null,
+          duration: record.exitTime
+            ? Math.floor((new Date(record.exitTime).getTime() - new Date(record.entryTime).getTime()) / 60000)
+            : null,
         }));
 
         columns = [

@@ -11,7 +11,7 @@ export async function PUT(
   try {
     const user = await getCurrentUser();
     
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'SATPAM')) {
       return NextResponse.json({
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'Tidak memiliki akses' }

@@ -6,6 +6,8 @@ import { logger } from '@/lib/logger';
 import { calculateOvertimeFine } from '@/lib/rules';
 import type { ViolationWithDetails } from '@/types';
 
+const OVERTIME_VIOLATION_CODE = 'OVER_TIME';
+
 // POST - Record vehicle exit
 export async function POST(request: NextRequest) {
   try {
@@ -58,83 +60,127 @@ export async function POST(request: NextRequest) {
     const entryTime = activeParking.entryTime;
     const durationMinutes = Math.floor((exitTime.getTime() - entryTime.getTime()) / (1000 * 60));
 
-    // Calculate fine for overtime (guests)
+    const guestAccess = activeParking.guestAccess;
+    const maxDurationHours = guestAccess?.maxDurationHours ?? null;
     let fineAmount = 0;
     let fineReason = '';
+    let violationId: string | null = null;
 
-    if (activeParking.guestAccess) {
-      const maxDuration = activeParking.guestAccess.maxDurationHours;
-      if (durationMinutes > maxDuration * 60) {
-        fineAmount = calculateOvertimeFine(entryTime, exitTime, maxDuration);
-        fineReason = `Parkir melebihi batas waktu (${Math.floor(durationMinutes / 60)} jam dari maksimal ${maxDuration} jam)`;
+    if (guestAccess && maxDurationHours !== null) {
+      const overtimeMinutes = durationMinutes - maxDurationHours * 60;
+      if (overtimeMinutes > 0) {
+        fineAmount = calculateOvertimeFine(entryTime, exitTime, maxDurationHours);
+        fineReason = `Parkir melebihi batas waktu (${Math.ceil(durationMinutes / 60)} jam dari maksimal ${maxDurationHours} jam)`;
+
+        const overtimeViolationType = await db.violationType.findUnique({
+          where: { code: OVERTIME_VIOLATION_CODE },
+        });
+
+        if (!overtimeViolationType) {
+          return NextResponse.json({
+            success: false,
+            error: { code: 'VIOLATION_TYPE_NOT_FOUND', message: 'Jenis pelanggaran denda tidak ditemukan' }
+          }, { status: 500 });
+        }
+
+        const existingViolation = await db.violation.findFirst({
+          where: {
+            vehicleId: activeParking.vehicleId,
+            violationTypeId: overtimeViolationType.id,
+            violationDate: { gte: entryTime },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (existingViolation?.status === 'PENDING') {
+          return NextResponse.json({
+            success: false,
+            error: {
+              code: 'PAYMENT_REQUIRED',
+              message: 'Akses keluar ditahan sampai denda keterlambatan dibayar',
+              details: {
+                violationId: existingViolation.id,
+                amount: existingViolation.totalFine,
+                reason: existingViolation.description || fineReason,
+              },
+            },
+          }, { status: 402 });
+        }
+
+        if (!existingViolation) {
+          const createdViolation = await db.violation.create({
+            data: {
+              vehicleId: activeParking.vehicleId,
+              violationTypeId: overtimeViolationType.id,
+              description: fineReason,
+              baseFine: fineAmount,
+              totalFine: fineAmount,
+              multiplier: 1,
+              status: 'PENDING',
+              recordedBy: user.id,
+              violationDate: exitTime,
+            },
+          });
+
+          violationId = createdViolation.id;
+
+          return NextResponse.json({
+            success: false,
+            error: {
+              code: 'PAYMENT_REQUIRED',
+              message: 'Akses keluar ditahan sampai denda keterlambatan dibayar',
+              details: {
+                violationId: createdViolation.id,
+                amount: createdViolation.totalFine,
+                reason: createdViolation.description || fineReason,
+              },
+            },
+          }, { status: 402 });
+        }
+
+        violationId = existingViolation.id;
+
+        if (existingViolation.status === 'PAID') {
+          fineAmount = existingViolation.totalFine;
+          fineReason = existingViolation.description || fineReason;
+        }
       }
     }
 
-    // Update access record
-    await db.accessRecord.update({
-      where: { id: activeParking.id },
-      data: {
-        exitTime,
-        status: 'COMPLETED',
-      },
-    });
-
-    // Release parking slot
-    if (activeParking.slotNumber && activeParking.areaId) {
-      const slot = await db.parkingSlot.findFirst({
-        where: {
-          areaId: activeParking.areaId,
-          slotNumber: activeParking.slotNumber,
+    await db.$transaction(async (tx) => {
+      await tx.accessRecord.update({
+        where: { id: activeParking.id },
+        data: {
+          exitTime,
+          status: 'COMPLETED',
         },
       });
 
-      if (slot) {
-        await db.parkingSlot.update({
-          where: { id: slot.id },
-          data: {
-            status: 'AVAILABLE',
-            vehicleId: null,
-            occupiedAt: null,
+      if (activeParking.slotNumber && activeParking.areaId) {
+        const slot = await tx.parkingSlot.findFirst({
+          where: {
+            areaId: activeParking.areaId,
+            slotNumber: activeParking.slotNumber,
           },
         });
+
+        if (slot) {
+          await tx.parkingSlot.update({
+            where: { id: slot.id },
+            data: {
+              status: 'AVAILABLE',
+              vehicleId: null,
+              occupiedAt: null,
+            },
+          });
+        }
+
+        await tx.parkingArea.update({
+          where: { id: activeParking.areaId },
+          data: { currentOccupancy: { decrement: 1 } },
+        });
       }
-
-      await db.parkingArea.update({
-        where: { id: activeParking.areaId },
-        data: { currentOccupancy: { decrement: 1 } },
-      });
-    }
-
-    // Create violation if there's a fine
-    let violation: ViolationWithDetails | null = null;
-    if (fineAmount > 0) {
-      const createdViolation = await db.violation.create({
-        data: {
-          vehicleId: activeParking.vehicleId,
-          violationTypeId: 'OVER_TIME',
-          description: fineReason,
-          baseFine: fineAmount,
-          totalFine: fineAmount,
-          multiplier: 1,
-          status: 'PENDING',
-          recordedBy: user.id,
-          violationDate: exitTime,
-        },
-      });
-      violation = {
-        id: createdViolation.id,
-        vehicle: null,
-        violationType: null,
-        description: createdViolation.description,
-        baseFine: createdViolation.baseFine,
-        totalFine: createdViolation.totalFine,
-        multiplier: createdViolation.multiplier,
-        status: createdViolation.status,
-        violationDate: createdViolation.violationDate,
-        paidAt: createdViolation.paidAt,
-        createdAt: createdViolation.createdAt,
-      } as ViolationWithDetails;
-    }
+    });
 
     // Log activity
     await logActivity({
@@ -147,6 +193,8 @@ export async function POST(request: NextRequest) {
         vehicleId: activeParking.vehicleId,
         duration: durationMinutes,
         fine: fineAmount,
+        violationId,
+        blocked: false,
       },
     });
 
@@ -167,7 +215,7 @@ export async function POST(request: NextRequest) {
         fine: fineAmount > 0 ? {
           amount: fineAmount,
           reason: fineReason,
-          violationId: violation?.id,
+          violationId,
         } : null,
       },
     });
