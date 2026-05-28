@@ -173,7 +173,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Soft delete user (set status to INACTIVE)
+// DELETE - Hard delete user
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -192,6 +192,7 @@ export async function DELETE(
 
     const existingUser = await db.user.findUnique({
       where: { id },
+      include: { resident: true }
     });
 
     if (!existingUser) {
@@ -209,29 +210,35 @@ export async function DELETE(
       }, { status: 400 });
     }
 
-    // Soft delete by setting status to INACTIVE
-    await db.user.update({
-      where: { id },
-      data: { status: 'INACTIVE' },
+    // Hard delete menggunakan Transaction (Hapus relasi resident dulu, baru hapus user)
+    await db.$transaction(async (tx) => {
+      if (existingUser.resident) {
+        await tx.resident.delete({
+          where: { userId: id }
+        });
+      }
+      await tx.user.delete({
+        where: { id }
+      });
     });
 
     await logActivity({
       userId: user.id,
       action: ACTIVITY_TYPES.USER_DELETE?.action || 'USER_DELETE',
       module: ACTIVITY_TYPES.USER_DELETE?.module || 'USERS',
-      description: `Menonaktifkan user: ${existingUser.username}`,
+      description: `Menghapus permanen user: ${existingUser.username}`,
       details: { deletedUserId: id },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'User berhasil dinonaktifkan',
+      message: 'User berhasil dihapus secara permanen',
     });
   } catch (error) {
     logger.error('Delete user error:', error);
     return NextResponse.json({
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: 'Terjadi kesalahan sistem' }
+      error: { code: 'INTERNAL_ERROR', message: 'Gagal menghapus! Pastikan user ini tidak terikat dengan data lain (seperti data kendaraan).' }
     }, { status: 500 });
   }
 }
