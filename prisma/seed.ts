@@ -7,7 +7,8 @@ async function main() {
   console.log('🌱 Starting seed...');
 
   // ==================== CREATE USERS ====================
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const rawSeedPassword = process.env.DEV_SEED_PASSWORD || 'changeme';
+  const hashedPassword = await bcrypt.hash(rawSeedPassword, 10);
 
   // Admin
   await prisma.user.upsert({
@@ -444,11 +445,7 @@ async function main() {
 
   console.log('🎉 Seed completed successfully!');
   console.log('');
-  console.log('📋 Login credentials:');
-  console.log('   Admin: admin / password123');
-  console.log('   Satpam: satpam1 / password123');
-  console.log('   Warga: warga1 / password123');
-  console.log('   Pengelola: pengelola / password123');
+  console.log('Note: seeded accounts use the password from DEV_SEED_PASSWORD (or a default).');
 }
 
 main()

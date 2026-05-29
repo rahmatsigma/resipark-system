@@ -41,10 +41,8 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
-    const total = await db.accessRecord.count({ where });
-    const totalPages = Math.ceil(total / limit);
-
-    const records = await db.accessRecord.findMany({
+    const totalPromise = db.accessRecord.count({ where });
+    const recordsPromise = db.accessRecord.findMany({
       where,
       include: {
         vehicle: {
@@ -66,6 +64,8 @@ export async function GET(request: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
     });
+    const [total, records] = await Promise.all([totalPromise, recordsPromise]);
+    const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,

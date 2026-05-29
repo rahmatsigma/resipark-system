@@ -47,10 +47,8 @@ export async function GET(request: Request) {
       };
     }
 
-    const total = await db.blacklist.count({ where });
-    const totalPages = Math.ceil(total / limit);
-
-    const blacklists = await db.blacklist.findMany({
+    const totalPromise = db.blacklist.count({ where });
+    const blacklistsPromise = db.blacklist.findMany({
       where,
       include: {
         vehicle: {
@@ -69,6 +67,8 @@ export async function GET(request: Request) {
       skip: (page - 1) * limit,
       take: limit,
     });
+    const [total, blacklists] = await Promise.all([totalPromise, blacklistsPromise]);
+    const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,

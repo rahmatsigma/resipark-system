@@ -47,10 +47,8 @@ export async function GET(request: NextRequest) {
       where.vehicleId = vehicleId;
     }
 
-    const total = await db.violation.count({ where });
-    const totalPages = Math.ceil(total / limit);
-
-    const violations = await db.violation.findMany({
+    const totalPromise = db.violation.count({ where });
+    const violationsPromise = db.violation.findMany({
       where,
       include: {
         vehicle: {
@@ -75,6 +73,8 @@ export async function GET(request: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
     });
+    const [total, violations] = await Promise.all([totalPromise, violationsPromise]);
+    const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,
