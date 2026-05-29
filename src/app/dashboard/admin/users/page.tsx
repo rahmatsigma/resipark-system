@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -46,7 +45,6 @@ import {
 import { DialogTrigger } from '@/components/ui/dialog';
 
 const ROLE_LABELS: Record<string, string> = {
-
   ADMIN: 'Admin',
   SATPAM: 'Satpam',
   WARGA: 'Warga',
@@ -113,7 +111,7 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // New house dialog state
   const [addHouseDialog, setAddHouseDialog] = useState(false);
@@ -155,7 +153,6 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
       if (addressRef.current) addressRef.current.value = '';
     }
   };
-
 
   const [formData, setFormData] = useState<UserFormData>({
     username: '',
@@ -203,7 +200,6 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
     }
   }, []);
 
-
   useEffect(() => {
     fetchUsers();
     fetchHouses();
@@ -250,8 +246,8 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menonaktifkan user ini?')) return;
+  const handleDelete = async (id: string, username: string) => {
+    if (!confirm(`PERINGATAN KRITIS:\nApakah Anda yakin ingin menghapus akun "${username}" secara PERMANEN?\n\nData tidak dapat dikembalikan.`)) return;
 
     try {
       const response = await fetch(`/api/users/${id}`, {
@@ -261,9 +257,11 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
       const data = await response.json();
 
       if (data.success) {
+        setSuccess(data.message || 'User berhasil dihapus permanen');
         fetchUsers();
+        setTimeout(() => setSuccess(''), 3000);
       } else {
-        alert(data.error?.message || 'Gagal menonaktifkan user');
+        alert(data.error?.message || 'Gagal menghapus user');
       }
     } catch {
       alert('Terjadi kesalahan sistem');
@@ -612,9 +610,8 @@ const [editingUser, setEditingUser] = useState<User | null>(null);
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(u.id)}
+                              onClick={() => handleDelete(u.id, u.username)}
                               className="text-red-600 hover:text-red-700"
-                              disabled={u.status === 'INACTIVE'}
                             >
                               <UserX className="h-4 w-4" />
                             </Button>

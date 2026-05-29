@@ -124,6 +124,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 // Get current user from session
+// Get current user from session
 export async function getCurrentUser(): Promise<SessionUser | null> {
   try {
     const cookieStore = await cookies();
@@ -131,17 +132,16 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     
     if (!signedSession) return null;
 
+    // 1. Verifikasi murni pakai crypt/token (Abaikan memory Map Vercel)
     const token = await verifySessionToken(signedSession);
     if (!token) return null;
+    // Check in-memory cache first (keyed by token.sessionId)
+    const cached = getCachedCurrentUser(token.sessionId);
+    if (cached) return cached;
     
-    const session = await getSession(token.sessionId);
-    if (!session) return null;
-
-    const cachedUser = getCachedCurrentUser(token.sessionId);
-    if (cachedUser) {
-      return cachedUser;
-    }
+    // (BARIS GET SESSION DIHAPUS DI SINI BIAR GAK MENTAL DI VERCEL)
     
+    // 2. Langsung cari data usernya ke database (Supabase)
     const user = await db.user.findUnique({
       where: { id: token.userId },
       select: {
@@ -175,11 +175,11 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       houseId: user.resident?.houseId,
       houseNumber: user.resident?.house?.houseNumber,
     };
-
+    // Cache and return
     cacheCurrentUser(token.sessionId, currentUser);
-
     return currentUser;
-  } catch {
+  } catch (error) {
+    console.error('Error saat verifikasi user:', error);
     return null;
   }
 }
