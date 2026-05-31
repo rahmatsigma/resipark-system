@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { calculateFine, checkAutoBlacklist } from '@/lib/rules';
+import { getOrCreateViolationType, normalizeViolationTypeCode } from '@/lib/violation-types';
 import type { BlacklistWithVehicle } from '@/types';
 import { NextResponse } from 'next/server';
 import { hasPermission } from '@/lib/auth';
@@ -129,10 +130,17 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Find violation type
-    const violationType = await db.violationType.findUnique({
-      where: { code: violationTypeCode },
-    });
+    const normalizedViolationTypeCode = normalizeViolationTypeCode(violationTypeCode);
+
+    if (!normalizedViolationTypeCode) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'INVALID_VIOLATION_TYPE', message: 'Jenis pelanggaran tidak valid' }
+      }, { status: 400 });
+    }
+
+    // Find or restore violation type
+    const violationType = await getOrCreateViolationType(normalizedViolationTypeCode);
 
     if (!violationType) {
       return NextResponse.json({
@@ -144,7 +152,7 @@ export async function POST(request: NextRequest) {
     // Calculate fine with multiplier
     const { baseFine, multiplier, totalFine } = await calculateFine(
       vehicle.id,
-      violationTypeCode as ViolationTypeCode,
+      normalizedViolationTypeCode,
       customAmount
     );
 
