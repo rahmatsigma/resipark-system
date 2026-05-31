@@ -5,7 +5,6 @@ import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { logger } from '@/lib/logger';
 import { calculateOvertimeFine } from '@/lib/rules';
 import { getOrCreateViolationType } from '@/lib/violation-types';
-import type { ViolationWithDetails } from '@/types';
 
 const OVERTIME_VIOLATION_CODE = 'OVER_TIME';
 
@@ -92,15 +91,31 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingViolation?.status === 'PENDING') {
+          const shouldSyncPendingFine =
+            existingViolation.totalFine !== fineAmount ||
+            (existingViolation.description || '') !== fineReason;
+
+          const syncedViolation = shouldSyncPendingFine
+            ? await db.violation.update({
+                where: { id: existingViolation.id },
+                data: {
+                  description: fineReason,
+                  baseFine: fineAmount,
+                  totalFine: fineAmount,
+                  multiplier: 1,
+                },
+              })
+            : existingViolation;
+
           return NextResponse.json({
             success: false,
             error: {
               code: 'PAYMENT_REQUIRED',
               message: 'Akses keluar ditahan sampai denda keterlambatan dibayar',
               details: {
-                violationId: existingViolation.id,
-                amount: existingViolation.totalFine,
-                reason: existingViolation.description || fineReason,
+                violationId: syncedViolation.id,
+                amount: syncedViolation.totalFine,
+                reason: syncedViolation.description || fineReason,
               },
             },
           }, { status: 402 });
@@ -172,12 +187,36 @@ export async function POST(request: NextRequest) {
               occupiedAt: null,
             },
           });
-        }
 
-        await tx.parkingArea.update({
-          where: { id: activeParking.areaId },
-          data: { currentOccupancy: { decrement: 1 } },
-        });
+          // Decrement appropriate counters on the area based on slot type
+          const areaUpdate: {
+            currentOccupancy: { decrement: number };
+            currentMotor?: { decrement: number };
+            currentMobil?: { decrement: number };
+          } = { currentOccupancy: { decrement: 1 } };
+          if (slot.slotType === 'MOTOR') {
+            areaUpdate.currentMotor = { decrement: 1 };
+          } else {
+            areaUpdate.currentMobil = { decrement: 1 };
+          }
+
+          await tx.parkingArea.update({
+            where: { id: activeParking.areaId },
+            data: areaUpdate,
+          });
+
+          // Keep guest plate number unchanged after exit so future visits can reuse the same record.
+          if (activeParking.vehicle && activeParking.vehicle.category === 'TAMU') {
+            await tx.vehicle.update({
+              where: { id: activeParking.vehicleId },
+              data: {
+                status: 'ACTIVE',
+                houseId: null,
+                userId: null,
+              },
+            });
+          }
+        }
       }
     });
 

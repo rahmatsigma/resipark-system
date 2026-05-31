@@ -22,12 +22,13 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { hours } = body;
+    const { maxDurationHours } = body;
+    const parsedHours = Number(maxDurationHours);
 
-    if (!Number.isInteger(hours) || hours === 0) {
+    if (!Number.isInteger(parsedHours)) {
       return NextResponse.json({
         success: false,
-        error: { code: 'INVALID_HOURS', message: 'Durasi perubahan tidak valid' }
+        error: { code: 'INVALID_HOURS', message: 'Durasi harus berupa angka bulat (boleh minus untuk testing denda)' }
       }, { status: 400 });
     }
 
@@ -53,20 +54,18 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Calculate new expiry time
-    const currentExpiry = guestAccess.expiredAt || new Date(Date.now() + guestAccess.maxDurationHours * HOUR_IN_MS);
-    const now = new Date();
-    const baseTime = hours > 0 ? (currentExpiry > now ? currentExpiry : now) : currentExpiry;
-    const nextDurationHours = Math.max(1, guestAccess.maxDurationHours + hours);
-    const durationDeltaHours = nextDurationHours - guestAccess.maxDurationHours;
-    const newExpiry = new Date(baseTime.getTime() + durationDeltaHours * HOUR_IN_MS);
+    const effectiveDurationHours = parsedHours;
+
+    // Calculate new expiry time relative to original entryTime
+    const entryTime = guestAccess.accessRecord.entryTime;
+    const newExpiry = new Date(entryTime.getTime() + effectiveDurationHours * HOUR_IN_MS);
 
     // Update guest access
     const updated = await db.guestAccess.update({
       where: { id },
       data: {
         expiredAt: newExpiry,
-        maxDurationHours: nextDurationHours,
+        maxDurationHours: effectiveDurationHours,
       },
     });
 
@@ -75,8 +74,14 @@ export async function PUT(
       userId: user.id,
       action: ACTIVITY_TYPES.GUEST_EXTEND.action,
       module: ACTIVITY_TYPES.GUEST_EXTEND.module,
-      description: `${hours > 0 ? 'Perpanjang' : 'Kurangi'} waktu tamu ${hours > 0 ? '+' : ''}${hours} jam`,
-      details: { guestId: id, hoursChanged: hours, nextDurationHours },
+      description: parsedHours < 0
+        ? `Set durasi tamu menjadi ${effectiveDurationHours} jam untuk simulasi overtime`
+        : `Set durasi tamu menjadi ${effectiveDurationHours} jam (absolute)`,
+      details: {
+        guestId: id,
+        maxDurationHours: effectiveDurationHours,
+        testOvertime: parsedHours < 0,
+      },
     });
 
     return NextResponse.json({

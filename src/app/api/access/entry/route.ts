@@ -76,6 +76,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Guest vehicles must always go through guest registration to set max duration first.
+    if (vehicle.category === 'TAMU') {
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'GUEST_DURATION_REQUIRED',
+          message: 'Kendaraan tamu harus registrasi tamu dulu dan isi durasi maksimal sebelum masuk',
+          isGuest: true,
+        },
+      }, { status: 400 });
+    }
+
     // Check blacklist
     const blacklistStatus = await isVehicleBlacklisted(vehicle.id);
     if (blacklistStatus.isBlacklisted) {
