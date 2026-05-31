@@ -25,129 +25,81 @@ export async function GET() {
     monthAgo.setMonth(monthAgo.getMonth() - 1);
     monthAgo.setHours(0, 0, 0, 0);
 
-    // Get today's entries and exits
-    const todayEntries = await db.accessRecord.count({
-      where: {
-        entryTime: {
-          gte: today,
-        },
-      },
-    });
+    // Use consolidated raw SQL aggregates to reduce round-trips
+    const accessAgg = (await db.$queryRaw`
+      SELECT
+        COUNT(*) FILTER (WHERE "entryTime" >= ${today})::int AS "todayEntries",
+        COUNT(*) FILTER (WHERE "exitTime" >= ${today})::int AS "todayExits",
+        COUNT(*) FILTER (WHERE "status" = 'ACTIVE')::int AS "currentParked"
+      FROM "access_records"
+    `) as Array<{ todayEntries: number; todayExits: number; currentParked: number }>;
 
-    const todayExits = await db.accessRecord.count({
-      where: {
-        exitTime: {
-          gte: today,
-        },
-      },
-    });
+    const activeGuestsRes = (await db.$queryRaw`
+      SELECT COUNT(*)::int AS cnt
+      FROM "guest_accesses" ga
+      JOIN "access_records" ar ON ga."accessRecordId" = ar.id
+      WHERE ar."status" = 'ACTIVE'
+    `) as Array<{ cnt: number }>;
 
-    // Get current parked vehicles
-    const currentParked = await db.accessRecord.count({
-      where: {
-        status: 'ACTIVE',
-      },
-    });
+    const [mainArea, guestArea] = await Promise.all([
+      db.parkingArea.findUnique({ where: { id: 'main-parking' }, select: { capacity: true, motorSlots: true, mobilSlots: true } }),
+      db.parkingArea.findUnique({ where: { id: 'guest-parking' }, select: { capacity: true, motorSlots: true, mobilSlots: true } }),
+    ]);
 
-    // Get active guests
-    const activeGuests = await db.guestAccess.count({
-      where: {
-        accessRecord: {
-          status: 'ACTIVE',
-        },
-      },
-    });
+    const occupiedSlots = (await db.$queryRaw`
+      SELECT "areaId", "slotType", COUNT(*)::int AS cnt
+      FROM "parking_slots"
+      WHERE "areaId" IN ('main-parking','guest-parking') AND "status" = 'OCCUPIED'
+      GROUP BY "areaId", "slotType"
+    `) as Array<{ areaId: string; slotType: string; cnt: number }>;
 
-    // Get parking areas config
-    const mainArea = await db.parkingArea.findUnique({
-      where: { id: 'main-parking' },
-    });
+    const violationsAgg = (await db.$queryRaw`
+      SELECT
+        COUNT(*) FILTER (WHERE "violationDate" >= ${today})::int AS "todayViolations",
+        COUNT(*) FILTER (WHERE "violationDate" >= ${weekAgo})::int AS "weekViolations",
+        COUNT(*) FILTER (WHERE "violationDate" >= ${monthAgo})::int AS "monthViolations",
+        COUNT(*) FILTER (WHERE "status" = 'PENDING')::int AS "pendingFines",
+        COALESCE(SUM("totalFine") FILTER (WHERE "status" = 'PENDING'),0)::float AS "totalUnpaid"
+      FROM "violations"
+    `) as Array<{ todayViolations: number; weekViolations: number; monthViolations: number; pendingFines: number; totalUnpaid: number }>;
 
-    const guestArea = await db.parkingArea.findUnique({
-      where: { id: 'guest-parking' },
-    });
+    const vehiclesAgg = (await db.$queryRaw`
+      SELECT
+        COUNT(*)::int AS "totalVehicles",
+        COUNT(*) FILTER (WHERE "status" = 'ACTIVE')::int AS "activeVehicles"
+      FROM "vehicles"
+    `) as Array<{ totalVehicles: number; activeVehicles: number }>;
 
-    // Get real-time occupancy from ParkingSlot (bypass stale cached counters)
-    const mainCurrentMotor = await db.parkingSlot.count({
-      where: {
-        areaId: 'main-parking',
-        status: 'OCCUPIED',
-        slotType: 'MOTOR',
-      },
-    });
+    const blacklistedRes = (await db.$queryRaw`
+      SELECT COUNT(*)::int AS cnt FROM "blacklists" WHERE "status" = 'ACTIVE'
+    `) as Array<{ cnt: number }>;
 
-    const mainCurrentMobil = await db.parkingSlot.count({
-      where: {
-        areaId: 'main-parking',
-        status: 'OCCUPIED',
-        slotType: 'MOBIL',
-      },
-    });
+    const todayEntries = Number(accessAgg[0]?.todayEntries || 0);
+    const todayExits = Number(accessAgg[0]?.todayExits || 0);
+    const currentParked = Number(accessAgg[0]?.currentParked || 0);
+    const activeGuests = Number(activeGuestsRes[0]?.cnt || 0);
 
-    const guestCurrentMotor = await db.parkingSlot.count({
-      where: {
-        areaId: 'guest-parking',
-        status: 'OCCUPIED',
-        slotType: 'MOTOR',
-      },
-    });
+    const slotCountMap = (occupiedSlots as any[]).reduce<Record<string, number>>((acc, slot: any) => {
+      acc[`${slot.areaId}:${slot.slotType}`] = Number(slot.cnt || 0);
+      return acc;
+    }, {});
 
-    const guestCurrentMobil = await db.parkingSlot.count({
-      where: {
-        areaId: 'guest-parking',
-        status: 'OCCUPIED',
-        slotType: 'MOBIL',
-      },
-    });
+    const todayViolations = Number(violationsAgg[0]?.todayViolations || 0);
+    const weekViolations = Number(violationsAgg[0]?.weekViolations || 0);
+    const monthViolations = Number(violationsAgg[0]?.monthViolations || 0);
+    const pendingFines = Number(violationsAgg[0]?.pendingFines || 0);
+    const unpaidTotal = Number(violationsAgg[0]?.totalUnpaid || 0);
 
-    // Get violations stats
-    const todayViolations = await db.violation.count({
-      where: {
-        violationDate: {
-          gte: today,
-        },
-      },
-    });
+    const totalVehicles = Number(vehiclesAgg[0]?.totalVehicles || 0);
+    const activeVehicles = Number(vehiclesAgg[0]?.activeVehicles || 0);
+    const blacklistedVehicles = Number(blacklistedRes[0]?.cnt || 0);
 
-    const weekViolations = await db.violation.count({
-      where: {
-        violationDate: {
-          gte: weekAgo,
-        },
-      },
-    });
+    // (occupiedSlots already processed into slotCountMap above)
 
-    const monthViolations = await db.violation.count({
-      where: {
-        violationDate: {
-          gte: monthAgo,
-        },
-      },
-    });
-
-    const pendingFines = await db.violation.count({
-      where: {
-        status: 'PENDING',
-      },
-    });
-
-    const unpaidTotal = await db.violation.aggregate({
-      where: {
-        status: 'PENDING',
-      },
-      _sum: {
-        totalFine: true,
-      },
-    });
-
-    // Get vehicle stats
-    const totalVehicles = await db.vehicle.count();
-    const activeVehicles = await db.vehicle.count({
-      where: { status: 'ACTIVE' },
-    });
-    const blacklistedVehicles = await db.blacklist.count({
-      where: { status: 'ACTIVE' },
-    });
+    const mainCurrentMotor = slotCountMap['main-parking:MOTOR'] || 0;
+    const mainCurrentMobil = slotCountMap['main-parking:MOBIL'] || 0;
+    const guestCurrentMotor = slotCountMap['guest-parking:MOTOR'] || 0;
+    const guestCurrentMobil = slotCountMap['guest-parking:MOBIL'] || 0;
 
     // Build main area stats from real slot occupancy
     const mainCapacity = mainArea?.capacity || 100;
@@ -197,7 +149,7 @@ export async function GET() {
         thisWeek: weekViolations,
         thisMonth: monthViolations,
         pendingFines: pendingFines,
-        totalUnpaid: unpaidTotal._sum.totalFine || 0,
+        totalUnpaid: unpaidTotal || 0,
       },
       vehicles: {
         total: totalVehicles,

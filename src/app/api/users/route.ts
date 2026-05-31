@@ -42,10 +42,8 @@ export async function GET(request: NextRequest) {
       where.role = role;
     }
 
-    const total = await db.user.count({ where });
-    const totalPages = Math.ceil(total / limit);
-
-    const users = await db.user.findMany({
+    const totalPromise = db.user.count({ where });
+    const usersPromise = db.user.findMany({
       where,
       include: {
         resident: {
@@ -58,6 +56,8 @@ export async function GET(request: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
     });
+    const [total, users] = await Promise.all([totalPromise, usersPromise]);
+    const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,

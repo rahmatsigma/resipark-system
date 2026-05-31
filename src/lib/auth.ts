@@ -12,13 +12,19 @@ const IDLE_TIMEOUT_MINUTES = 30 * 60 * 1000; // 30 minutes in ms
 // Persist sessions across dev hot reloads so authenticated API calls keep working.
 const globalForSessions = globalThis as typeof globalThis & {
   __parkirSessions?: Map<string, { userId: string; expiresAt: Date; lastActivity: number }>;
+  __parkirCurrentUsers?: Map<string, { user: SessionUser; expiresAt: number }>;
 };
 
 // Simple in-memory session store (for demo - use Redis in production)
 const sessions = globalForSessions.__parkirSessions ?? new Map<string, { userId: string; expiresAt: Date; lastActivity: number }>(); // Unix timestamp
+const currentUsers = globalForSessions.__parkirCurrentUsers ?? new Map<string, { user: SessionUser; expiresAt: number }>();
 
 if (!globalForSessions.__parkirSessions) {
   globalForSessions.__parkirSessions = sessions;
+}
+
+if (!globalForSessions.__parkirCurrentUsers) {
+  globalForSessions.__parkirCurrentUsers = currentUsers;
 }
 
 export interface SessionUser {
@@ -29,6 +35,27 @@ export interface SessionUser {
   role: UserRole;
   houseId?: string;
   houseNumber?: string;
+}
+
+const CURRENT_USER_CACHE_TTL_MS = 15 * 1000;
+
+function cacheCurrentUser(sessionId: string, user: SessionUser): void {
+  currentUsers.set(sessionId, {
+    user,
+    expiresAt: Date.now() + CURRENT_USER_CACHE_TTL_MS,
+  });
+}
+
+function getCachedCurrentUser(sessionId: string): SessionUser | null {
+  const cached = currentUsers.get(sessionId);
+  if (!cached) return null;
+
+  if (cached.expiresAt < Date.now()) {
+    currentUsers.delete(sessionId);
+    return null;
+  }
+
+  return cached.user;
 }
 
 // Hash password
@@ -108,22 +135,38 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     // 1. Verifikasi murni pakai crypt/token (Abaikan memory Map Vercel)
     const token = await verifySessionToken(signedSession);
     if (!token) return null;
+    // Check in-memory cache first (keyed by token.sessionId)
+    const cached = getCachedCurrentUser(token.sessionId);
+    if (cached) return cached;
     
     // (BARIS GET SESSION DIHAPUS DI SINI BIAR GAK MENTAL DI VERCEL)
     
     // 2. Langsung cari data usernya ke database (Supabase)
     const user = await db.user.findUnique({
       where: { id: token.userId },
-      include: {
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
         resident: {
-          include: { house: true }
-        }
-      }
+          select: {
+            houseId: true,
+            house: {
+              select: {
+                houseNumber: true,
+              },
+            },
+          },
+        },
+      },
     });
     
     if (!user || user.status !== 'ACTIVE') return null;
-    
-    return {
+
+    const currentUser: SessionUser = {
       id: user.id,
       username: user.username,
       email: user.email,
@@ -132,6 +175,9 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       houseId: user.resident?.houseId,
       houseNumber: user.resident?.house?.houseNumber,
     };
+    // Cache and return
+    cacheCurrentUser(token.sessionId, currentUser);
+    return currentUser;
   } catch (error) {
     console.error('Error saat verifikasi user:', error);
     return null;
@@ -209,18 +255,22 @@ export async function login(username: string, password: string): Promise<{ succe
     
     const sessionId = await createSession(user.id);
     await setSessionCookie(sessionId, user.id, user.role);
+
+    const currentUser: SessionUser = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      houseId: user.resident?.houseId,
+      houseNumber: user.resident?.house?.houseNumber,
+    };
+
+    cacheCurrentUser(sessionId, currentUser);
     
     return {
       success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        houseId: user.resident?.houseId,
-        houseNumber: user.resident?.house?.houseNumber,
-      }
+      user: currentUser
     };
   } catch (error) {
     logger.error('Login error:', error);
@@ -244,6 +294,7 @@ export async function logout(): Promise<void> {
     
     if (token) {
       await deleteSession(token.sessionId);
+      currentUsers.delete(token.sessionId);
     }
     
     await clearSessionCookie();

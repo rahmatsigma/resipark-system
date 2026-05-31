@@ -47,6 +47,8 @@ model User {
   violations Violation[]       @relation("ViolationRecorder")
   blacklists  Blacklist[]       @relation("BlacklistCreator")
 
+  @@index([role, status])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -71,6 +73,8 @@ model House {
   vehicles     Vehicle[]
   guestAccesses GuestAccess[]
 
+  @@index([block, houseNumber])
+  @@index([status])
   @@map("houses")
 }
 
@@ -91,6 +95,7 @@ model Resident {
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   house        House            @relation(fields: [houseId], references: [id], onDelete: Cascade)
 
+  @@index([houseId])
   @@map("residents")
 }
 
@@ -138,6 +143,10 @@ model Vehicle {
   blacklist    Blacklist?
   parkingSlots ParkingSlot[]
 
+  @@index([userId, status])
+  @@index([status, registeredAt])
+  @@index([houseId])
+  @@index([category, status])
   @@map("vehicles")
 }
 
@@ -178,6 +187,7 @@ model ParkingArea {
   slots            ParkingSlot[]
   accessRecords    AccessRecord[]
 
+  @@index([type, status])
   @@map("parking_areas")
 }
 
@@ -203,6 +213,8 @@ model ParkingSlot {
   vehicle     Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
 
   @@unique([areaId, slotNumber])
+  @@index([areaId, status, slotType])
+  @@index([vehicleId])
   @@map("parking_slots")
 }
 
@@ -230,6 +242,12 @@ model AccessRecord {
   operator     User         @relation("AccessOperator", fields: [operatorId], references: [id])
   guestAccess  GuestAccess?
 
+  @@index([entryTime])
+  @@index([exitTime])
+  @@index([status])
+  @@index([vehicleId, status])
+  @@index([status, entryTime])
+  @@index([status, exitTime])
   @@map("access_records")
 }
 
@@ -246,6 +264,7 @@ model GuestAccess {
   accessRecord    AccessRecord @relation(fields: [accessRecordId], references: [id], onDelete: Cascade)
   hostHouse       House        @relation(fields: [hostHouseId], references: [id], onDelete: Cascade)
 
+  @@index([hostHouseId])
   @@map("guest_accesses")
 }
 
@@ -299,6 +318,10 @@ model Violation {
   recorder       User             @relation("ViolationRecorder", fields: [recordedBy], references: [id])
   payment        Payment?
 
+  @@index([vehicleId, status])
+  @@index([status, violationDate])
+  @@index([violationDate])
+  @@index([recordedBy])
   @@map("violations")
 }
 
@@ -357,6 +380,8 @@ model Blacklist {
   vehicle       Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   creator       User             @relation("BlacklistCreator", fields: [addedBy], references: [id])
 
+  @@index([status])
+  @@index([addedBy])
   @@map("blacklists")
 }
 
@@ -375,5 +400,7 @@ model ActivityLog {
   // Relations
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([createdAt])
+  @@index([userId, createdAt])
   @@map("activity_logs")
 }

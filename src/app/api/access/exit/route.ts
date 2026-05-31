@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
 import { logger } from '@/lib/logger';
 import { calculateOvertimeFine } from '@/lib/rules';
+import { getOrCreateViolationType } from '@/lib/violation-types';
 import type { ViolationWithDetails } from '@/types';
 
 const OVERTIME_VIOLATION_CODE = 'OVER_TIME';
@@ -72,9 +73,7 @@ export async function POST(request: NextRequest) {
         fineAmount = calculateOvertimeFine(entryTime, exitTime, maxDurationHours);
         fineReason = `Parkir melebihi batas waktu (${Math.ceil(durationMinutes / 60)} jam dari maksimal ${maxDurationHours} jam)`;
 
-        const overtimeViolationType = await db.violationType.findUnique({
-          where: { code: OVERTIME_VIOLATION_CODE },
-        });
+        const overtimeViolationType = await getOrCreateViolationType(OVERTIME_VIOLATION_CODE);
 
         if (!overtimeViolationType) {
           return NextResponse.json({

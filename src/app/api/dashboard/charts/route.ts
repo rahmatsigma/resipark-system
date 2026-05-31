@@ -21,46 +21,54 @@ export async function GET(request: NextRequest) {
     if (period === '30d') days = 30;
     if (period === '90d') days = 90;
 
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (days - 1));
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date();
+    endDate.setHours(0, 0, 0, 0);
+    endDate.setDate(endDate.getDate() + 1);
+
+    const lastDate = new Date(endDate);
+    lastDate.setDate(lastDate.getDate() - 1);
+
     type ChartDataPoint = {
       date: string;
       entries: number;
       exits: number;
     };
 
-    const chartData: ChartDataPoint[] = [];
+    const chartRows = await db.$queryRaw<Array<{ day: Date; entries: bigint | number; exits: bigint | number }>>`
+      WITH days AS (
+        SELECT generate_series(${startDate}::date, ${lastDate}::date, interval '1 day')::date AS day
+      ),
+      entries AS (
+        SELECT date_trunc('day', "entryTime")::date AS day, COUNT(*)::bigint AS entries
+        FROM "access_records"
+        WHERE "entryTime" >= ${startDate} AND "entryTime" < ${endDate}
+        GROUP BY 1
+      ),
+      exits AS (
+        SELECT date_trunc('day', "exitTime")::date AS day, COUNT(*)::bigint AS exits
+        FROM "access_records"
+        WHERE "exitTime" >= ${startDate} AND "exitTime" < ${endDate}
+        GROUP BY 1
+      )
+      SELECT
+        days.day,
+        COALESCE(entries.entries, 0)::bigint AS entries,
+        COALESCE(exits.exits, 0)::bigint AS exits
+      FROM days
+      LEFT JOIN entries ON entries.day = days.day
+      LEFT JOIN exits ON exits.day = days.day
+      ORDER BY days.day
+    `;
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const entries = await db.accessRecord.count({
-        where: {
-          entryTime: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-      });
-
-      const exits = await db.accessRecord.count({
-        where: {
-          exitTime: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-      });
-
-      chartData.push({
-        date: date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
-        entries,
-        exits,
-      });
-    }
+    const chartData: ChartDataPoint[] = chartRows.map((row) => ({
+      date: row.day.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
+      entries: Number(row.entries),
+      exits: Number(row.exits),
+    }));
 
     return NextResponse.json({
       success: true,
