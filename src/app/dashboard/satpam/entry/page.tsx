@@ -162,7 +162,7 @@ export default function EntryPage() {
             <Card className="border-green-200 bg-green-50 dark:bg-green-950">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shrink-0">
                     <CheckCircle className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -214,7 +214,7 @@ export default function EntryPage() {
             <Card className="border-red-200 bg-red-50 dark:bg-red-950">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shrink-0">
                     <XCircle className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -234,17 +234,17 @@ export default function EntryPage() {
             </Card>
           )}
 
-          {/* Guest Vehicle Not Found */}
+          {/* Guest Registration Required */}
           {result.isGuest && (
             <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center shrink-0">
                     <Car className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
-                      Kendaraan Tidak Terdaftar
+                      Registrasi Tamu Diperlukan
                     </h3>
                     <p className="text-yellow-700 dark:text-yellow-300 mt-2">
                       {result.error}

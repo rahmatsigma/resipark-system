@@ -98,6 +98,9 @@ export default function GuestsPage() {
   const [now, setNow] = useState<Date>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingGuest, setEditingGuest] = useState<null | { id: string; maxDurationHours: number }>(null);
+  const [editDurationInput, setEditDurationInput] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -107,7 +110,7 @@ export default function GuestsPage() {
     color: '',
     hostHouseNumber: '',
     purpose: '',
-    maxDurationHours: 8,
+    maxDurationHours: '',
   });
 
   const fetchGuests = async () => {
@@ -170,7 +173,7 @@ export default function GuestsPage() {
           color: '',
           hostHouseNumber: '',
           purpose: '',
-          maxDurationHours: 8,
+          maxDurationHours: '',
         });
         fetchGuests();
         setTimeout(() => setSuccess(''), 3000);
@@ -184,20 +187,35 @@ export default function GuestsPage() {
     }
   };
 
-  const handleExtend = async (id: string, hours: number) => {
+  const openEditDialog = (id: string, currentHours: number) => {
+    setEditingGuest({ id, maxDurationHours: currentHours });
+    setEditDurationInput(String(currentHours));
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingGuest) return;
+    const parsedHours = Number(editDurationInput);
+    if (!Number.isInteger(parsedHours)) {
+      alert('Masukkan angka bulat. Gunakan nilai minus untuk simulasi overtime/denda.');
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/guests/${id}/extend`, {
+      const response = await fetch(`/api/guests/${editingGuest.id}/extend`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hours }),
+        body: JSON.stringify({ maxDurationHours: parsedHours }),
       });
 
       const data = await response.json();
-
       if (data.success) {
+        setEditDialogOpen(false);
+        setEditingGuest(null);
+        setEditDurationInput('');
         fetchGuests();
       } else {
-        alert(data.error?.message || 'Gagal memperpanjang waktu');
+        alert(data.error?.message || 'Gagal menyimpan durasi');
       }
     } catch {
       alert('Terjadi kesalahan sistem');
@@ -259,8 +277,8 @@ export default function GuestsPage() {
                       <div className="space-y-2">
                         <Label htmlFor="maxDurationHours">Durasi Maksimal</Label>
                         <Select
-                          value={formData.maxDurationHours.toString()}
-                          onValueChange={(v) => setFormData({ ...formData, maxDurationHours: parseInt(v) })}
+                          value={formData.maxDurationHours}
+                          onValueChange={(v) => setFormData({ ...formData, maxDurationHours: v })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih durasi" />
@@ -338,7 +356,11 @@ export default function GuestsPage() {
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                       Batal
                     </Button>
-                    <Button type="submit" disabled={saving} className="bg-emerald-500 hover:bg-emerald-600">
+                    <Button
+                      type="submit"
+                      disabled={saving || !formData.maxDurationHours}
+                      className="bg-emerald-500 hover:bg-emerald-600"
+                    >
                       {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Registrasi
                     </Button>
@@ -368,7 +390,7 @@ export default function GuestsPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-lg">
-                        {guest.accessRecord.vehicle.platNumber}
+                        {guest.accessRecord.vehicle.platNumber || '—'}
                       </span>
                       <Badge variant={guest.accessRecord.status === 'ACTIVE' ? 'default' : 'secondary'}>
                         {guest.accessRecord.status === 'ACTIVE' ? 'Aktif' : 'Selesai'}
@@ -395,7 +417,7 @@ export default function GuestsPage() {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Gunakan tombol plus/minus untuk simulasi durasi saat testing.
+                      Saat edit durasi, masukkan nilai minus (contoh: -2) agar tamu langsung overtime untuk tes denda.
                     </p>
                     <div className="text-sm">
                       <span className="text-muted-foreground">Masuk:</span>{' '}
@@ -429,37 +451,63 @@ export default function GuestsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                          onClick={() => handleExtend(guest.id, -2)}
+                          onClick={() => openEditDialog(guest.id, guest.maxDurationHours)}
                         >
-                          -2 Jam
+                          Edit Durasi
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                          onClick={() => handleExtend(guest.id, -4)}
+                          variant="ghost"
+                          onClick={() => fetchGuests()}
                         >
-                          -4 Jam
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => handleExtend(guest.id, 2)}
-                        >
-                          +2 Jam
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => handleExtend(guest.id, 4)}
-                        >
-                          +4 Jam
+                          Refresh
                         </Button>
                       </div>
                     )}
+                    {/* Edit Duration Dialog */}
+                    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edit Durasi Tamu</DialogTitle>
+                          <DialogDescription>
+                            Masukkan angka jam. Nilai positif = durasi normal, nilai minus = expired di masa lalu (untuk test denda).
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                          <Label>Durasi (jam)</Label>
+                          <Input
+                            className="mt-2"
+                            type="number"
+                            step={1}
+                            value={editDurationInput}
+                            onChange={(e) => setEditDurationInput(e.target.value)}
+                            placeholder="Contoh: 8 atau -2"
+                          />
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Durasi saat ini: {editingGuest?.maxDurationHours ?? 0} jam
+                          </p>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setEditDialogOpen(false);
+                              setEditingGuest(null);
+                              setEditDurationInput('');
+                            }}
+                          >
+                            Batal
+                          </Button>
+                          <Button
+                            onClick={handleSaveEdit}
+                            className="bg-emerald-500 hover:bg-emerald-600"
+                            disabled={!Number.isInteger(Number(editDurationInput))}
+                          >
+                            Simpan
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </CardContent>
                 </Card>
               ))}
