@@ -32,7 +32,7 @@ import {
   UserCheck,
   Clock,
 } from 'lucide-react';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, VEHICLE_TYPE_LABELS } from '@/lib/utils';
 
 interface GuestAccess {
   id: string;
@@ -41,6 +41,7 @@ interface GuestAccess {
   accessRecord: {
     vehicle: {
       platNumber: string;
+      vehicleType: keyof typeof VEHICLE_TYPE_LABELS;
       brand: string;
       color: string;
     };
@@ -60,6 +61,15 @@ interface HostHouse {
   houseNumber: string;
   block: string;
 }
+
+interface GuestPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+const PAGE_SIZE = 6;
 
 function pad(n: number) {
   return n.toString().padStart(2, '0');
@@ -91,10 +101,45 @@ function getRemainingClass(guest: GuestAccess, now: Date) {
   return 'text-emerald-700 font-medium';
 }
 
+function getVehicleGroup(vehicleType: keyof typeof VEHICLE_TYPE_LABELS) {
+  return vehicleType === 'MOTOR' ? 'Motor' : 'Mobil';
+}
+
+function buildVisiblePages(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages: Array<number | 'ellipsis'> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) {
+    pages.push('ellipsis');
+  }
+
+  for (let page = start; page <= end; page += 1) {
+    pages.push(page);
+  }
+
+  if (end < totalPages - 1) {
+    pages.push('ellipsis');
+  }
+
+  pages.push(totalPages);
+  return pages;
+}
+
 export default function GuestsPage() {
   const [guests, setGuests] = useState<GuestAccess[]>([]);
   const [houses, setHouses] = useState<HostHouse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState<GuestPagination>({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
   const [now, setNow] = useState<Date>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -106,6 +151,7 @@ export default function GuestsPage() {
 
   const [formData, setFormData] = useState({
     platNumber: '',
+    vehicleType: 'MOTOR',
     brand: '',
     color: '',
     hostHouseNumber: '',
@@ -113,14 +159,20 @@ export default function GuestsPage() {
     maxDurationHours: '',
   });
 
-  const fetchGuests = async () => {
+  const fetchGuests = async (page = 1) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/guests');
+      const response = await fetch(`/api/guests?page=${page}&limit=${PAGE_SIZE}`);
       const data = await response.json();
 
       if (data.success) {
-        setGuests(data.data);
+        setGuests(data.data || []);
+        setPagination(data.pagination || {
+          page,
+          limit: PAGE_SIZE,
+          total: data.data?.length || 0,
+          totalPages: 1,
+        });
       }
     } catch (error) {
       logger.error('Failed to fetch guests:', error);
@@ -140,9 +192,12 @@ export default function GuestsPage() {
   };
 
   useEffect(() => {
-    fetchGuests();
     fetchHouses();
   }, []);
+
+  useEffect(() => {
+    fetchGuests(pagination.page);
+  }, [pagination.page]);
 
   // Update 'now' every second to drive countdown timers
   useEffect(() => {
@@ -169,13 +224,15 @@ export default function GuestsPage() {
         setDialogOpen(false);
         setFormData({
           platNumber: '',
+          vehicleType: 'MOTOR',
           brand: '',
           color: '',
           hostHouseNumber: '',
           purpose: '',
           maxDurationHours: '',
         });
-        fetchGuests();
+        fetchGuests(1);
+        setPagination((current) => ({ ...current, page: 1 }));
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(data.error?.message || 'Gagal meregistrasi tamu');
@@ -213,7 +270,7 @@ export default function GuestsPage() {
         setEditDialogOpen(false);
         setEditingGuest(null);
         setEditDurationInput('');
-        fetchGuests();
+        fetchGuests(pagination.page);
       } else {
         alert(data.error?.message || 'Gagal menyimpan durasi');
       }
@@ -272,6 +329,25 @@ export default function GuestsPage() {
                           onChange={(e) => setFormData({ ...formData, platNumber: e.target.value.toUpperCase() })}
                           required
                         />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vehicleType">Tipe Kendaraan</Label>
+                        <Select
+                          value={formData.vehicleType}
+                          onValueChange={(v) => setFormData({ ...formData, vehicleType: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih tipe kendaraan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MOTOR">Motor</SelectItem>
+                            <SelectItem value="SEDAN">Mobil Sedan</SelectItem>
+                            <SelectItem value="MINIBUS">Mobil Minibus</SelectItem>
+                            <SelectItem value="PICKUP">Mobil Pickup</SelectItem>
+                            <SelectItem value="TRUK">Mobil Truk</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="space-y-2">
@@ -396,6 +472,10 @@ export default function GuestsPage() {
                         {guest.accessRecord.status === 'ACTIVE' ? 'Aktif' : 'Selesai'}
                       </Badge>
                     </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Badge variant="outline">{getVehicleGroup(guest.accessRecord.vehicle.vehicleType)}</Badge>
+                      <Badge variant="outline">{VEHICLE_TYPE_LABELS[guest.accessRecord.vehicle.vehicleType]}</Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="text-sm">
@@ -458,7 +538,7 @@ export default function GuestsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => fetchGuests()}
+                          onClick={() => fetchGuests(pagination.page)}
                         >
                           Refresh
                         </Button>
@@ -511,6 +591,48 @@ export default function GuestsPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {pagination.totalPages > 1 && (
+            <div className="mt-6 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Menampilkan {Math.min((pagination.page - 1) * pagination.limit + 1, pagination.total)}-{Math.min(pagination.page * pagination.limit, pagination.total)} dari {pagination.total} data
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination((current) => ({ ...current, page: Math.max(1, current.page - 1) }))}
+                  disabled={pagination.page <= 1}
+                >
+                  Sebelumnya
+                </Button>
+                {buildVisiblePages(pagination.page, pagination.totalPages).map((pageItem, index) =>
+                  pageItem === 'ellipsis' ? (
+                    <span key={`ellipsis-${index}`} className="px-2 text-sm text-muted-foreground">
+                      ...
+                    </span>
+                  ) : (
+                    <Button
+                      key={pageItem}
+                      variant={pageItem === pagination.page ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPagination((current) => ({ ...current, page: pageItem }))}
+                    >
+                      {pageItem}
+                    </Button>
+                  )
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination((current) => ({ ...current, page: Math.min(current.totalPages, current.page + 1) }))}
+                  disabled={pagination.page >= pagination.totalPages}
+                >
+                  Berikutnya
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

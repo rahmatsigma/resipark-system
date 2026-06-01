@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity, ACTIVITY_TYPES } from '@/lib/activity';
-import { isVehicleBlacklisted, checkParkingCapacity, getAvailableSlot, getSlotTypeByVehicle, getAvailableSlotByType } from '@/lib/rules';
+import { isVehicleBlacklisted, checkParkingCapacityByType, getSlotTypeByVehicle, getAvailableSlotByType, validatePlatNumber } from '@/lib/rules';
 import { logger } from '@/lib/logger';
 
+const DEFAULT_GUEST_PAGE_SIZE = 6;
+const ALLOWED_VEHICLE_TYPES = new Set(['MOTOR', 'SEDAN', 'MINIBUS', 'PICKUP', 'TRUK']);
+
+function normalizeVehicleType(vehicleType: unknown): 'MOTOR' | 'SEDAN' | 'MINIBUS' | 'PICKUP' | 'TRUK' {
+  const normalized = typeof vehicleType === 'string' ? vehicleType.toUpperCase().trim() : 'MOTOR';
+
+  if (ALLOWED_VEHICLE_TYPES.has(normalized)) {
+    return normalized as 'MOTOR' | 'SEDAN' | 'MINIBUS' | 'PICKUP' | 'TRUK';
+  }
+
+  return 'MOTOR';
+}
+
 // GET - List guests
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     
@@ -17,23 +30,67 @@ export async function GET() {
       }, { status: 401 });
     }
 
-    // NOTE: removed stray slot check from GET handler (not applicable here)
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get('page') || '1'));
+    const limit = Math.min(24, Math.max(1, Number(searchParams.get('limit') || String(DEFAULT_GUEST_PAGE_SIZE))));
+    const skip = (page - 1) * limit;
 
-    const guests = await db.guestAccess.findMany({
-      include: {
-        accessRecord: {
-          include: {
-            vehicle: true,
+    const [total, guests] = await Promise.all([
+      db.guestAccess.count(),
+      db.guestAccess.findMany({
+        include: {
+          accessRecord: {
+            include: {
+              vehicle: true,
+            },
           },
+          hostHouse: true,
         },
-        hostHouse: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+
+    if (safePage !== page) {
+      const correctedGuests = await db.guestAccess.findMany({
+        include: {
+          accessRecord: {
+            include: {
+              vehicle: true,
+            },
+          },
+          hostHouse: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (safePage - 1) * limit,
+        take: limit,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: correctedGuests,
+        pagination: {
+          page: safePage,
+          limit,
+          total,
+          totalPages,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
       data: guests,
+      pagination: {
+        page: safePage,
+        limit,
+        total,
+        totalPages,
+      },
     });
   } catch (error) {
     logger.error('Get guests error:', error);
@@ -57,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { platNumber, brand, color, hostHouseNumber, purpose, maxDurationHours } = body;
+    const { platNumber, vehicleType, brand, color, hostHouseNumber, purpose, maxDurationHours } = body;
 
     if (!platNumber || !hostHouseNumber || !purpose || maxDurationHours === undefined || maxDurationHours === null) {
       return NextResponse.json({
@@ -74,7 +131,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    const platValidation = validatePlatNumber(platNumber);
+    if (!platValidation.valid) {
+      return NextResponse.json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: platValidation.error }
+      }, { status: 400 });
+    }
+
     const formattedPlat = platNumber.toUpperCase().trim();
+    const normalizedVehicleType = normalizeVehicleType(vehicleType);
 
     // Find host house
     const hostHouse = await db.house.findFirst({
@@ -100,7 +166,7 @@ export async function POST(request: NextRequest) {
           platNumber: formattedPlat,
           brand: brand || 'Tamu',
           color: color || 'Tidak diketahui',
-          vehicleType: 'MOTOR',
+          vehicleType: normalizedVehicleType,
           category: 'TAMU',
           status: 'ACTIVE',
         },
@@ -147,6 +213,7 @@ export async function POST(request: NextRequest) {
           data: {
             brand: brand || vehicle!.brand,
             color: color || vehicle!.color,
+            vehicleType: vehicle!.category === 'TAMU' ? normalizedVehicleType : vehicle!.vehicleType,
             category: 'TAMU',
             status: 'ACTIVE',
             houseId: null,
@@ -195,6 +262,7 @@ export async function POST(request: NextRequest) {
         data: {
           brand: brand || vehicle.brand,
           color: color || vehicle.color,
+          vehicleType: normalizedVehicleType,
           status: 'ACTIVE',
           houseId: null,
           userId: null,
@@ -202,44 +270,32 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check parking capacity
-    const capacity = await checkParkingCapacity('guest-parking');
+    const slotType = getSlotTypeByVehicle(normalizedVehicleType);
+
+    // Check parking capacity by vehicle group so motor/mobil availability is respected
+    const capacity = await checkParkingCapacityByType('guest-parking', slotType);
     if (!capacity.available) {
       return NextResponse.json({
         success: false,
-        error: { code: 'PARKING_FULL', message: 'Area parkir tamu penuh' }
+        error: {
+          code: 'PARKING_FULL',
+          message: `Area parkir tamu ${slotType === 'MOTOR' ? 'motor' : 'mobil'} penuh`
+        }
       }, { status: 503 });
     }
 
-    // Determine slot type and try to get an available slot of that type
-    let slotType = getSlotTypeByVehicle(vehicle.vehicleType);
     const slotInfo = await getAvailableSlotByType('guest-parking', slotType);
-    let slotId: string | null = null;
-    let slotNumber: string | null = null;
-
-    if (slotInfo) {
-      slotId = slotInfo.id;
-      slotNumber = slotInfo.slotNumber;
-    } else {
-      // Fallback: pick any available slot in guest area
-      const anySlotId = await getAvailableSlot('guest-parking');
-      if (anySlotId) {
-        const anySlot = await db.parkingSlot.findUnique({ where: { id: anySlotId } });
-        if (anySlot) {
-          slotId = anySlot.id;
-          slotNumber = anySlot.slotNumber;
-          slotType = anySlot.slotType; // use actual slot type for counters
-        }
-      }
-    }
-
-    // If we couldn't find an actual slot (DB may be missing slots), fail early
-    if (!slotId) {
+    if (!slotInfo) {
       return NextResponse.json({
         success: false,
-        error: { code: 'PARKING_FULL', message: 'Tidak ada slot parkir tersedia untuk tipe kendaraan ini' }
+        error: {
+          code: 'PARKING_FULL',
+          message: `Tidak ada slot parkir tersedia untuk ${slotType === 'MOTOR' ? 'motor' : 'mobil'}`
+        }
       }, { status: 503 });
     }
+
+    const { id: slotId, slotNumber } = slotInfo;
 
     // Create access record and guest access in transaction
     const result = await db.$transaction(async (tx) => {
