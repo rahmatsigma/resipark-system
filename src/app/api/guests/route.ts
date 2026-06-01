@@ -10,11 +10,9 @@ const ALLOWED_VEHICLE_TYPES = new Set(['MOTOR', 'SEDAN', 'MINIBUS', 'PICKUP', 'T
 
 function normalizeVehicleType(vehicleType: unknown): 'MOTOR' | 'SEDAN' | 'MINIBUS' | 'PICKUP' | 'TRUK' {
   const normalized = typeof vehicleType === 'string' ? vehicleType.toUpperCase().trim() : 'MOTOR';
-
   if (ALLOWED_VEHICLE_TYPES.has(normalized)) {
     return normalized as 'MOTOR' | 'SEDAN' | 'MINIBUS' | 'PICKUP' | 'TRUK';
   }
-
   return 'MOTOR';
 }
 
@@ -160,7 +158,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (!vehicle) {
-      // Create new guest vehicle
       vehicle = await db.vehicle.create({
         data: {
           platNumber: formattedPlat,
@@ -186,7 +183,7 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // If this plate already has an active guest session, overwrite guest data and duration only.
+    // If active session exists, overwrite
     const activeGuestSession = await db.accessRecord.findFirst({
       where: {
         vehicleId: vehicle.id,
@@ -270,9 +267,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 🛠️ AUTO-HEALING DB: Bersihkan Slot yang Nyangkut
+    await db.$executeRaw`
+      UPDATE "parking_slots"
+      SET "status" = 'AVAILABLE', "vehicleId" = NULL, "occupiedAt" = NULL
+      WHERE "areaId" = 'guest-parking' AND "status" = 'OCCUPIED'
+      AND NOT EXISTS (
+        SELECT 1 FROM "access_records" ar
+        WHERE ar."vehicleId" = "parking_slots"."vehicleId" AND ar."status" = 'ACTIVE'
+      )
+    `;
+
+    // 🛠️ Sinkronisasi Ulang Angka di Tabel Parking Areas
+    await db.$executeRaw`
+      UPDATE "parking_areas" pa
+      SET 
+        "currentMotor" = (SELECT COUNT(*) FROM "parking_slots" ps WHERE ps."areaId" = pa.id AND ps."status" = 'OCCUPIED' AND ps."slotType" = 'MOTOR'),
+        "currentMobil" = (SELECT COUNT(*) FROM "parking_slots" ps WHERE ps."areaId" = pa.id AND ps."status" = 'OCCUPIED' AND ps."slotType" = 'MOBIL'),
+        "currentOccupancy" = (SELECT COUNT(*) FROM "parking_slots" ps WHERE ps."areaId" = pa.id AND ps."status" = 'OCCUPIED')
+      WHERE pa.id = 'guest-parking'
+    `;
+
     const slotType = getSlotTypeByVehicle(normalizedVehicleType);
 
-    // Check parking capacity by vehicle group so motor/mobil availability is respected
+    // Check parking capacity
     const capacity = await checkParkingCapacityByType('guest-parking', slotType);
     if (!capacity.available) {
       return NextResponse.json({
@@ -299,7 +317,6 @@ export async function POST(request: NextRequest) {
 
     // Create access record and guest access in transaction
     const result = await db.$transaction(async (tx) => {
-      // Create access record
       const accessRecord = await tx.accessRecord.create({
         data: {
           vehicleId: vehicle!.id,
@@ -311,7 +328,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create guest access
       const guestAccess = await tx.guestAccess.create({
         data: {
           accessRecordId: accessRecord.id,
@@ -328,7 +344,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Update parking slot if assigned
       if (slotId) {
         await tx.parkingSlot.update({
           where: { id: slotId },
@@ -338,11 +353,7 @@ export async function POST(request: NextRequest) {
             occupiedAt: new Date(),
           },
         });
-      }
 
-      // Update parking area occupancy (including per-type counters)
-      // Only update counters when a real slot was assigned
-      if (slotId) {
         const areaUpdateData: {
           currentOccupancy: { increment: number };
           currentMotor?: { increment: number };
@@ -360,7 +371,6 @@ export async function POST(request: NextRequest) {
       return guestAccess;
     });
 
-    // Log activity
     await logActivity({
       userId: user.id,
       action: ACTIVITY_TYPES.GUEST_REGISTER.action,

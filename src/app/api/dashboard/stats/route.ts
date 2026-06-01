@@ -14,6 +14,26 @@ export async function GET() {
       }, { status: 401 });
     }
 
+    // 🛠️ AUTO-HEALING DB: Membersihkan seluruh Zombie Slots di database
+    await db.$executeRaw`
+      UPDATE "parking_slots"
+      SET "status" = 'AVAILABLE', "vehicleId" = NULL, "occupiedAt" = NULL
+      WHERE "status" = 'OCCUPIED'
+      AND NOT EXISTS (
+        SELECT 1 FROM "access_records" ar
+        WHERE ar."vehicleId" = "parking_slots"."vehicleId" AND ar."status" = 'ACTIVE'
+      )
+    `;
+
+    // 🛠️ Sinkronisasi Ulang Angka di Tabel Parking Areas
+    await db.$executeRaw`
+      UPDATE "parking_areas" pa
+      SET 
+        "currentMotor" = (SELECT COUNT(*) FROM "parking_slots" ps WHERE ps."areaId" = pa.id AND ps."status" = 'OCCUPIED' AND ps."slotType" = 'MOTOR'),
+        "currentMobil" = (SELECT COUNT(*) FROM "parking_slots" ps WHERE ps."areaId" = pa.id AND ps."status" = 'OCCUPIED' AND ps."slotType" = 'MOBIL'),
+        "currentOccupancy" = (SELECT COUNT(*) FROM "parking_slots" ps WHERE ps."areaId" = pa.id AND ps."status" = 'OCCUPIED')
+    `;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -25,7 +45,6 @@ export async function GET() {
     monthAgo.setMonth(monthAgo.getMonth() - 1);
     monthAgo.setHours(0, 0, 0, 0);
 
-    // Use consolidated raw SQL aggregates to reduce round-trips
     const accessAgg = (await db.$queryRaw`
       SELECT
         COUNT(*) FILTER (WHERE "entryTime" >= ${today})::int AS "todayEntries",
@@ -94,20 +113,16 @@ export async function GET() {
     const activeVehicles = Number(vehiclesAgg[0]?.activeVehicles || 0);
     const blacklistedVehicles = Number(blacklistedRes[0]?.cnt || 0);
 
-    // (occupiedSlots already processed into slotCountMap above)
-
     const mainCurrentMotor = slotCountMap['main-parking:MOTOR'] || 0;
     const mainCurrentMobil = slotCountMap['main-parking:MOBIL'] || 0;
     const guestCurrentMotor = slotCountMap['guest-parking:MOTOR'] || 0;
     const guestCurrentMobil = slotCountMap['guest-parking:MOBIL'] || 0;
 
-    // Build main area stats from real slot occupancy
     const mainCapacity = mainArea?.capacity || 100;
     const mainMotorSlots = mainArea?.motorSlots || 50;
     const mainMobilSlots = mainArea?.mobilSlots || 50;
     const mainOccupied = mainCurrentMotor + mainCurrentMobil;
 
-    // Build guest area stats from real slot occupancy
     const guestCapacity = guestArea?.capacity || 20;
     const guestMotorSlots = guestArea?.motorSlots || 10;
     const guestMobilSlots = guestArea?.mobilSlots || 10;
