@@ -127,7 +127,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-
             <Button
               type="submit"
               className="w-full bg-emerald-500 hover:bg-emerald-600"
@@ -144,18 +143,13 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-4 flex items-center justify-between text-sm">
+          {/* Bagian footer form diubah menjadi justify-center karena hanya sisa 1 link */}
+          <div className="mt-4 flex items-center justify-center text-sm">
             <Link
               href="/auth/forgot-password"
               className="text-emerald-600 hover:underline"
             >
               Lupa Password?
-            </Link>
-            <Link
-              href="/auth/register"
-              className="text-emerald-600 hover:underline"
-            >
-              Daftar Akun
             </Link>
           </div>
 
